@@ -61,7 +61,7 @@ class Surfer(BasePlugin):
             last_refresh_time = now.strftime("%Y-%m-%d %I:%M %p")
         template_params["last_refresh_time"] = last_refresh_time
 
-        image = self.render_image(dimensions, "weather.html", "weather.css", template_params)
+        image = self.render_image(dimensions, "surfer.html", "surfer.css", template_params)
 
         if not image:
             raise RuntimeError("Failed to take screenshot, please check logs.")
