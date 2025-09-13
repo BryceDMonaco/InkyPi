@@ -1,4 +1,15 @@
+from datetime import datetime, timezone
+import json
+import logging
+import pandas as pd
 from plugins.base_plugin.base_plugin import BasePlugin
+import pytz
+import requests
+
+logger = logging.getLogger(__name__)
+
+SIM_API = True
+SURF_DATA_URL = "https://api.stormglass.io/v2/weather/point"
 
 
 class Surfer(BasePlugin):
@@ -24,6 +35,7 @@ class Surfer(BasePlugin):
         timezone = device_config.get_config("timezone", default="America/New_York")
         time_format = device_config.get_config("time_format", default="12h")
         tz = pytz.timezone(timezone)
+        storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
 
         # Gather and parse weather data
         try:
@@ -85,3 +97,76 @@ class Surfer(BasePlugin):
 
         data['hourly_forecast'] = self.parse_hourly(weather_data.get('hourly'), tz, time_format)
         return data
+
+    def get_surf_data(self, lat, long, api_key):
+        response = None
+        if SIM_API:
+            test_json_file_path = './WeatherRequestResponseRaw.json'
+            with open(test_json_file_path, "r") as f:
+                response = json.load(f)
+            return response
+        else:
+            response = requests.get(
+                SURF_DATA_URL,
+                params={
+                    'lat':lat,
+                    'lng':long,
+                    'params': ','.join(['swellDirection', 'swellHeight', 'swellPeriod', 'waterTemperature', 'waveDirection', 'waveHeight', 'wavePeriod'])
+                },
+                headers={
+                    'Authorization': api_key
+                }
+            )
+
+            if not 200 <= response.status_code < 300:
+                logging.error(f"Failed to retrieve surf data: {response.content}")
+                raise RuntimeError("Failed to retrieve surf data.")
+            else:
+                return response.json()
+
+    def parse_surf_data(self, surf_data):
+        # JSON is returned with 'hours' object containing the data and 'meta' object we do not need
+        hours = surf_data["hours"]
+
+        # Need to determine which measurements were provided in order to average the same ones from different sources
+        # Excludes the "time" value for each object
+        # TODO: Could probably make the measurements a setting and then the list can just be passed along
+        all_fields = set()
+        for entry in hours:
+            all_fields.update(k for k in entry.keys() if k != "time")
+
+        # Average measurements from different sources, ex. waterTemperature.noaa and waterTemperature.eg into waterTemperature
+        rows = []
+        for entry in hours:
+            row = {}
+            row["time"] = pd.to_datetime(entry["time"])
+            for field in all_fields:
+                if field in entry and isinstance(entry[field], dict):
+                    values = [v for v in entry[field].values() if isinstance(v, (int, float))]
+                    if values:  # avoid empty dicts or non-numeric
+                        row[field] = sum(values) / len(values)
+                elif field in entry and isinstance(entry[field], (int, float)):
+                    # if a field is directly numeric
+                    row[field] = entry[field]
+            rows.append(row)
+
+        df = pd.DataFrame(rows)
+
+        # Sort by time
+        df = df.sort_values("time").reset_index(drop=True)
+
+        # TODO: Handle converting the time to 12H or 24H
+        # TODO: Handle converting units such as temp from C to F (API sends C)
+
+
+        return df
+
+    def get_ai_surf_summary(self, surf_data, do_surfer_bro):
+        # TODO make API call to AI service with the prompt below and appended surf data
+        surfer_bro_prompt = 'Your response should be made as a stereotypical California surfer dude and should use American surfer slang.'
+        prompt = 'Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} The second sentence should concisely give the best time(s) to go surfing for the day, if any, if there are no good times, the second sentence should be omitted. Sentences should be short and not contain any new lines or breaks between them. {data}'
+        prompt = prompt.format(bro_prompt = surfer_bro_prompt if do_surfer_bro else '', data=surf_data)
+
+        # TODO AI call here, returning placeholder until then
+
+        return 'Morning’s blown out mush, dude, not worth the paddle. Best window’s 7–9pm when it cleans up.'
