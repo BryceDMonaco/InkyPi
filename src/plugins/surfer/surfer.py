@@ -24,6 +24,7 @@ class Surfer(BasePlugin):
         return template_params
 
     def generate_image(self, settings, device_config):
+        # TODO: to limit API usage, look into caching data so calls are only made once per day
         lat = settings.get('latitude')
         long = settings.get('longitude')
         if not lat or not long:
