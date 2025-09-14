@@ -53,12 +53,13 @@ class Surfer(BasePlugin):
             parsed_surf_data = self.parse_surf_data(surf_data)
 
             # TODO need to take the surf data and add it to a template params dict, each measurement can be its own entry
-
-            template_params['title'] = 'The Big MB'
-            template_params['current_date'] = start_time.strftime("%A, %B %d")
-            template_params['ai_summary'] = self.get_ai_surf_summary(parsed_surf_data, True)
-            template_params['times'] = parsed_surf_data['times'].tolist()
-            template_params['water_temperatures'] = parsed_surf_data['waterTemperature'].tolist()
+            template_params = {
+                'title': 'The Big MB',
+                'current_date': start_time.strftime("%A, %B %d"),
+                'ai_summary': self.get_ai_surf_summary(parsed_surf_data, True),
+                'times': parsed_surf_data['times'].tolist(),
+                'water_temperatures': parsed_surf_data['waterTemperature'].tolist()
+            }
         except Exception as e:
             logger.error(f'Storm Glass request failed: {str(e)}')
             raise RuntimeError('Storm Glass request failure, please check logs.')
