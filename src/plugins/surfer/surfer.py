@@ -44,24 +44,6 @@ class Surfer(BasePlugin):
         formatted_start_time = start_time.strftime("%Y-%m-%dT00:00:00")
         formatted_end_time = end_time.strftime("%Y-%m-%dT00:00:00")
 
-        # Gather and parse weather data
-        try:
-            if weather_provider == "OpenWeatherMap":
-                api_key = device_config.load_env_key("OPEN_WEATHER_MAP_SECRET")
-                if not api_key:
-                    raise RuntimeError("Open Weather Map API Key not configured.")
-                weather_data = self.get_weather_data(api_key, units, lat, long)
-                if settings.get('titleSelection', 'location') == 'location':
-                    title = self.get_location(api_key, lat, long)
-                template_params = self.parse_weather_data(weather_data, aqi_data, tz, units, time_format)
-            else:
-                raise RuntimeError(f"Unknown weather provider: {weather_provider}")
-
-            template_params['title'] = title
-        except Exception as e:
-            logger.error(f"{weather_provider} request failed: {str(e)}")
-            raise RuntimeError(f"{weather_provider} request failure, please check logs.")
-
         # Gather and parse surf data
         try:
             storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
@@ -102,25 +84,6 @@ class Surfer(BasePlugin):
         if not image:
             raise RuntimeError("Failed to take screenshot, please check logs.")
         return image
-
-    def parse_weather_data(self, weather_data, aqi_data, tz, units, time_format):
-        current = weather_data.get("current")
-        dt = datetime.fromtimestamp(current.get('dt'), tz=timezone.utc).astimezone(tz)
-        current_icon = current.get("weather")[0].get("icon").replace("n", "d")
-        data = {
-            "current_date": dt.strftime("%A, %B %d"),
-            "current_day_icon": self.get_plugin_dir(f'icons/{current_icon}.png'),
-            "current_temperature": str(round(current.get("temp"))),
-            "feels_like": str(round(current.get("feels_like"))),
-            "temperature_unit": UNITS[units]["temperature"],
-            "units": units,
-            "time_format": time_format
-        }
-        data['forecast'] = self.parse_forecast(weather_data.get('daily'), tz)
-        data['data_points'] = self.parse_data_points(weather_data, aqi_data, tz, units, time_format)
-
-        data['hourly_forecast'] = self.parse_hourly(weather_data.get('hourly'), tz, time_format)
-        return data
 
     # Returns the raw json response of {hours: { <array of 25 data points for each hour (00 - 23 and 00 for next day) }, meta: { misc API info }}
     def get_surf_data(self, lat, long, start_time, end_time, api_key):
