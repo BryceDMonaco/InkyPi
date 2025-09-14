@@ -40,6 +40,8 @@ SERVICE_FILE_TARGET="/etc/systemd/system/$SERVICE_FILE"
 APT_REQUIREMENTS_FILE="$SCRIPT_DIR/debian-requirements.txt"
 PIP_REQUIREMENTS_FILE="$SCRIPT_DIR/requirements.txt"
 
+FORCE_REBOOT=false
+
 # 
 # Additional requirements for Waveshare support.
 #
@@ -50,11 +52,14 @@ WS_REQUIREMENTS_FILE="$SCRIPT_DIR/ws-requirements.txt"
 
 # Parse the agumments, looking for the -W option.
 parse_arguments() {
-    while getopts ":W:" opt; do
+    while getopts ":W:f" opt; do
         case $opt in
             W) WS_TYPE=$OPTARG
-                echo "Optional parameter WS is set for Waveshare support.  Screen type is: $WS_TYPE"
-                ;;
+               echo "Optional parameter WS is set for Waveshare support. Screen type is: $WS_TYPE"
+               ;;
+            f) FORCE_REBOOT=true
+               echo "Force reboot option enabled, system will automatically reboot if installation is successful."
+               ;;
             \?) echo "Invalid option: -$OPTARG." >&2
                 exit 1
                 ;;
@@ -321,19 +326,25 @@ ask_for_reboot() {
   echo_header "[•] After your Pi is rebooted, you can access the web UI by going to $(echo_blue "'$hostname.local'") or $(echo_blue "'$ip_address'") in your browser."
   echo_header "[•] If you encounter any issues or have suggestions, please submit them here: https://github.com/fatihak/InkyPi/issues"
 
-  read -p "Would you like to restart your Raspberry Pi now? [Y/N] " userInput
-  userInput="${userInput^^}"
-
-  if [[ "${userInput,,}" == "y" ]]; then
-    echo_success "You entered 'Y', rebooting now..."
+  if $FORCE_REBOOT; then
+    echo_success "Force reboot enabled, rebooting now..."
     sleep 2
     sudo reboot now
-  elif [[ "${userInput,,}" == "n" ]]; then
-    echo "Please restart your Raspberry Pi later to apply changes by running 'sudo reboot now'."
-    exit
   else
-    echo "Unknown input, please restart your Raspberry Pi later to apply changes by running 'sudo reboot now'."
-    sleep 1
+    read -p "Would you like to restart your Raspberry Pi now? [Y/N] " userInput
+    userInput="${userInput^^}"
+
+    if [[ "${userInput,,}" == "y" ]]; then
+      echo_success "You entered 'Y', rebooting now..."
+      sleep 2
+      sudo reboot now
+    elif [[ "${userInput,,}" == "n" ]]; then
+      echo "Please restart your Raspberry Pi later to apply changes by running 'sudo reboot now'."
+      exit
+    else
+      echo "Unknown input, please restart your Raspberry Pi later to apply changes by running 'sudo reboot now'."
+      sleep 1
+    fi
   fi
 }
 
