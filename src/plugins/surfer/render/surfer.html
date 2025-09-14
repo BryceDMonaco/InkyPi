@@ -14,11 +14,9 @@
   </div>
 
   <!-- Hourly Temperature Graph -->
-  {% if plugin_settings.displayGraph and plugin_settings.displayGraph == "true" %}
   <div class="chart-container">
     <canvas id="hourlyTemperatureChart"></canvas>
   </div>
-  {% endif %}
 
   <!-- Forecast Row -->
   {% if plugin_settings.displayForecast and plugin_settings.displayForecast == "true" %}
