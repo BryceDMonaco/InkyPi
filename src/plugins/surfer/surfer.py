@@ -90,7 +90,7 @@ class Surfer(BasePlugin):
         response = None
         if SIM_API:
             logging.info('Simming Storm Glass API response')
-            test_json_file_path = './WeatherRequestResponseRaw.json'
+            test_json_file_path = self.get_plugin_dir('WeatherRequestResponseRaw.json')
             with open(test_json_file_path, "r") as f:
                 response = json.load(f)
             return response
