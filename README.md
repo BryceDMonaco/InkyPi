@@ -66,6 +66,8 @@ To install InkyPi, follow these steps:
     
     * -W \<waveshare device model\> - specify this parameter **ONLY** if installing for a Waveshare display.  After the -W option specify the Waveshare device model e.g. epd7in3f.
 
+    * -f - Automatically reboots your Raspberry Pi if installation is successful.
+
     e.g. for Inky displays use:
     ```bash
     sudo bash install/install.sh
@@ -77,7 +79,7 @@ To install InkyPi, follow these steps:
     ```
 
 
-After the installation is complete, the script will prompt you to reboot your Raspberry Pi. Once rebooted, the display will update to show the InkyPi splash screen.
+After the installation is complete, the script will prompt you to reboot your Raspberry Pi if you do not provide the `-f` option. Once rebooted, the display will update to show the InkyPi splash screen.
 
 Note: 
 - The installation script requires sudo privileges to install and run the service. We recommend starting with a fresh installation of Raspberry Pi OS to avoid potential conflicts with existing software or configurations.
