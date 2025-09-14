@@ -10,38 +10,39 @@
   <div class="header">
     <div class="title">{{ title }}</div>
     <div class="current-date">{{ current_date }}</div>
+    <div class="current-date">{{ ai_summary }}</div>
   </div>
 
-  <div class="today-container">
-    <!-- Current Weather Row -->
-    <div class="current-temperature">
-      <!-- Icon + Temperature -->
-        <img class="current-icon" src="{{current_day_icon}}" alt="Current Weather Icon">
-        <div class="current-weather">
-          <div class="current-temp">{{ current_temperature }}<span class="temperature-unit">{{temperature_unit}}</span></div>
-          <div class="feels-like">Feels Like {{ feels_like }}{% if units != "standard" %}°{% endif %}</div>
-          <div class="min-max">{{ forecast[0].high }}{% if units != "standard" %}°{% endif %} / {{ forecast[0].low }}{% if units != "standard" %}°{% endif %}</div>
-        </div>
-    </div>
+<!--  <div class="today-container">-->
+<!--    &lt;!&ndash; Current Weather Row &ndash;&gt;-->
+<!--    <div class="current-temperature">-->
+<!--      &lt;!&ndash; Icon + Temperature &ndash;&gt;-->
+<!--        <img class="current-icon" src="{{current_day_icon}}" alt="Current Weather Icon">-->
+<!--        <div class="current-weather">-->
+<!--          <div class="current-temp">{{ current_temperature }}<span class="temperature-unit">{{temperature_unit}}</span></div>-->
+<!--          <div class="feels-like">Feels Like {{ feels_like }}{% if units != "standard" %}°{% endif %}</div>-->
+<!--          <div class="min-max">{{ forecast[0].high }}{% if units != "standard" %}°{% endif %} / {{ forecast[0].low }}{% if units != "standard" %}°{% endif %}</div>-->
+<!--        </div>-->
+<!--    </div>-->
 
     <!-- Data Points Grid (Sunset, Wind, UV, etc.) -->
-    {% if plugin_settings.displayMetrics and  plugin_settings.displayMetrics == "true" %}
-    <div class="data-points">
-      {% for dp in data_points %}
-        <div class="data-point column-container">
-          <div class="data-point-img-container">
-            <img class="data-point-icon" src="{{dp.icon}}" alt="{{ dp.label }}">
-          </div>
-          <div class="data-point-data">
-            <div class="data-point-label">{{ dp.label }}</div>
-            <div class="data-point-measurement">{{ dp.measurement }}{% if dp.unit %}<span class="data-point-unit">{{ dp.unit }}</span>{% endif %}
-            </div>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </div>
+<!--    {% if plugin_settings.displayMetrics and  plugin_settings.displayMetrics == "true" %}-->
+<!--    <div class="data-points">-->
+<!--      {% for dp in data_points %}-->
+<!--        <div class="data-point column-container">-->
+<!--          <div class="data-point-img-container">-->
+<!--            <img class="data-point-icon" src="{{dp.icon}}" alt="{{ dp.label }}">-->
+<!--          </div>-->
+<!--          <div class="data-point-data">-->
+<!--            <div class="data-point-label">{{ dp.label }}</div>-->
+<!--            <div class="data-point-measurement">{{ dp.measurement }}{% if dp.unit %}<span class="data-point-unit">{{ dp.unit }}</span>{% endif %}-->
+<!--            </div>-->
+<!--          </div>-->
+<!--        </div>-->
+<!--      {% endfor %}-->
+<!--    </div>-->
+<!--    {% endif %}-->
+<!--  </div>-->
 
   <!-- Hourly Temperature Graph -->
   {% if plugin_settings.displayGraph and plugin_settings.displayGraph == "true" %}
@@ -83,9 +84,9 @@
     const rect = canvas.getBoundingClientRect();
 
     // Extract hourly temperature and labels from template variables
-    const labels = [{% for hour in hourly_forecast %}"{{ hour.time }}"{% if not loop.last %}, {% endif %}{% endfor %}];
-    const temperatures = [{% for hour in hourly_forecast %}{{ hour.temperature }}{% if not loop.last %}, {% endif %}{% endfor %}];
-    const precipitation = [{% for hour in hourly_forecast %}{{ hour.precipitiation * 100}}{% if not loop.last %}, {% endif %}{% endfor %}]; // Convert to percentage
+    const labels = {{ times | tojson }};
+    const temperatures = {{ water_temperatures | tojson }};
+    //const precipitation = [{% for hour in hourly_forecast %}{{ hour.precipitiation * 100}}{% if not loop.last %}, {% endif %}{% endfor %}]; // Convert to percentage
 
     // Find min and max temperatures
     const minTemp = Math.min(...temperatures);
@@ -104,23 +105,23 @@
           pointRadius: 0, // Hide points
           fill: true, // Enable filling the area under the line
           tension: 0.5
-        },
-        {
-          type: 'bar',
-          label: 'Precipitation Probability',
-          data: precipitation,
-          borderColor: 'rgba(26, 111, 176, 1)', // Semi-transparent blue
-          borderWidth: {
-            top: 2,
-            right: 0,
-            bottom: 0,
-            left: 0
-          },
-          yAxisID: 'y1',
-          barPercentage: 1.0, // Ensures full width
-          categoryPercentage: 1.0,  // Ensures full width
-          fill: true, // Enable filling the area under the line
         }
+//        {
+//          type: 'bar',
+//          label: 'Precipitation Probability',
+//          data: precipitation,
+//          borderColor: 'rgba(26, 111, 176, 1)', // Semi-transparent blue
+//          borderWidth: {
+//            top: 2,
+//            right: 0,
+//            bottom: 0,
+//            left: 0
+//          },
+//          yAxisID: 'y1',
+//          barPercentage: 1.0, // Ensures full width
+//          categoryPercentage: 1.0,  // Ensures full width
+//          fill: true, // Enable filling the area under the line
+//        }
       ]
       },
       options: {
@@ -212,13 +213,13 @@
     chart.data.datasets[0].backgroundColor = tempGradient;
 
     // Create gradient based on y-axis values
-    const precipitationGradient = ctx.createLinearGradient(0, gradientStart, 0, gradientEnd);
-    precipitationGradient.addColorStop(0, 'rgba(26, 111, 176, 0.8)'); // Top of the gradient (max temperature)
-    precipitationGradient.addColorStop(1, 'rgba(194, 223, 246, 0)'); // Bottom of the gradient (min temperature)
+    //const precipitationGradient = ctx.createLinearGradient(0, gradientStart, 0, gradientEnd);
+    //precipitationGradient.addColorStop(0, 'rgba(26, 111, 176, 0.8)'); // Top of the gradient (max temperature)
+    //precipitationGradient.addColorStop(1, 'rgba(194, 223, 246, 0)'); // Bottom of the gradient (min temperature)
 
-    chart.data.datasets[1].backgroundColor = precipitationGradient;
+    //chart.data.datasets[1].backgroundColor = precipitationGradient;
 
-    chart.update();
+    //chart.update();
   });
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 import logging
 import pandas as pd
@@ -10,15 +10,17 @@ logger = logging.getLogger(__name__)
 
 SIM_API = True
 SURF_DATA_URL = "https://api.stormglass.io/v2/weather/point"
+# TODO: Eventually these should be settings passed in from the UI
+HARDCODED_SURF_PARAMS = ['swellDirection', 'swellHeight', 'swellPeriod', 'waterTemperature', 'waveDirection', 'waveHeight', 'wavePeriod']
 
 
 class Surfer(BasePlugin):
     def generate_settings_template(self):
         template_params = super().generate_settings_template()
-        template_params['api_key'] = {
+        template_params['storm_glass_api_key'] = {
             "required": True,
-            "service": "OpenWeatherMap",
-            "expected_key": "OPEN_WEATHER_MAP_SECRET"
+            "service": "StormGlass",
+            "expected_key": "STORM_GLASS_SECRET"
         }
         template_params['style_settings'] = True
         return template_params
@@ -36,7 +38,11 @@ class Surfer(BasePlugin):
         timezone = device_config.get_config("timezone", default="America/New_York")
         time_format = device_config.get_config("time_format", default="12h")
         tz = pytz.timezone(timezone)
-        storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
+
+        start_time = datetime.now()
+        end_time = start_time + timedelta(days=1)
+        formatted_start_time = start_time.strftime("%Y-%m-%dT00:00:00")
+        formatted_end_time = end_time.strftime("%Y-%m-%dT00:00:00")
 
         # Gather and parse weather data
         try:
@@ -57,6 +63,23 @@ class Surfer(BasePlugin):
             raise RuntimeError(f"{weather_provider} request failure, please check logs.")
 
         # Gather and parse surf data
+        try:
+            storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
+            if not storm_glass_api_key:
+                raise RuntimeError('Storm Glass API Key not configured')
+            surf_data = self.get_surf_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
+            parsed_surf_data = self.parse_surf_data(surf_data)
+
+            # TODO need to take the surf data and add it to a template params dict, each measurement can be its own entry
+
+            template_params['title'] = 'The Big MB'
+            template_params['current_date'] = start_time.strftime("%A, %B %d")
+            template_params['ai_summary'] = self.get_ai_surf_summary(parsed_surf_data, True)
+            template_params['times'] = parsed_surf_data['times'].tolist()
+            template_params['water_temperatures'] = parsed_surf_data['waterTemperature'].tolist()
+        except Exception as e:
+            logger.error(f'Storm Glass request failed: {str(e)}')
+            raise RuntimeError('Storm Glass request failure, please check logs.')
 
         # Have language model summarize
 
@@ -99,9 +122,11 @@ class Surfer(BasePlugin):
         data['hourly_forecast'] = self.parse_hourly(weather_data.get('hourly'), tz, time_format)
         return data
 
-    def get_surf_data(self, lat, long, api_key):
+    # Returns the raw json response of {hours: { <array of 25 data points for each hour (00 - 23 and 00 for next day) }, meta: { misc API info }}
+    def get_surf_data(self, lat, long, start_time, end_time, api_key):
         response = None
         if SIM_API:
+            logging.info('Simming Storm Glass API response')
             test_json_file_path = './WeatherRequestResponseRaw.json'
             with open(test_json_file_path, "r") as f:
                 response = json.load(f)
@@ -110,9 +135,11 @@ class Surfer(BasePlugin):
             response = requests.get(
                 SURF_DATA_URL,
                 params={
+                    'start': start_time,
+                    'end': end_time,
                     'lat':lat,
                     'lng':long,
-                    'params': ','.join(['swellDirection', 'swellHeight', 'swellPeriod', 'waterTemperature', 'waveDirection', 'waveHeight', 'wavePeriod'])
+                    'params': ','.join(HARDCODED_SURF_PARAMS),
                 },
                 headers={
                     'Authorization': api_key
@@ -125,6 +152,11 @@ class Surfer(BasePlugin):
             else:
                 return response.json()
 
+    # Returns a dataframe of the hourly data sorted by time in the form:
+    #   YYYY-MM-DD HH:MM:SS+00:00   - swellHeight - waterTemperature - ... - < Measurement X >
+    #   ...
+    #   YYYY-MM-DD+1 HH:MM:SS+00:00 - swellHeight - waterTemperature - ... - < Measurement X >
+    # Note the order of the measurements after the time column is not guaranteed, but it shouldn't be an issue
     def parse_surf_data(self, surf_data):
         # JSON is returned with 'hours' object containing the data and 'meta' object we do not need
         hours = surf_data["hours"]
@@ -159,7 +191,6 @@ class Surfer(BasePlugin):
         # TODO: Handle converting the time to 12H or 24H
         # TODO: Handle converting units such as temp from C to F (API sends C)
 
-
         return df
 
     def get_ai_surf_summary(self, surf_data, do_surfer_bro):
@@ -170,4 +201,4 @@ class Surfer(BasePlugin):
 
         # TODO AI call here, returning placeholder until then
 
-        return 'Morning’s blown out mush, dude, not worth the paddle. Best window’s 7–9pm when it cleans up.'
+        return f'Morning’s blown out mush, dude, not worth the paddle. Best window’s 7–9pm when it cleans up. ({datetime.now()})'
