@@ -57,7 +57,7 @@ class Surfer(BasePlugin):
                 'title': 'The Big MB',
                 'current_date': start_time.strftime("%A, %B %d"),
                 'ai_summary': self.get_ai_surf_summary(parsed_surf_data, True),
-                'times': parsed_surf_data['times'].tolist(),
+                'times': parsed_surf_data['time'].tolist(),
                 'water_temperatures': parsed_surf_data['waterTemperature'].tolist()
             }
         except Exception as e:
