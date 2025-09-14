@@ -13,6 +13,7 @@ SURF_DATA_URL = "https://api.stormglass.io/v2/weather/point"
 # TODO: Eventually these should be settings passed in from the UI
 HARDCODED_SURF_PARAMS = ['swellDirection', 'swellHeight', 'swellPeriod', 'waterTemperature', 'waveDirection', 'waveHeight', 'wavePeriod']
 
+# Where I left off: Data is available, currently simmed (not tested on pi), should try throwing it into some graphs to display :) Have a good day
 
 class Surfer(BasePlugin):
     def generate_settings_template(self):
@@ -57,7 +58,7 @@ class Surfer(BasePlugin):
                 'title': 'The Big MB',
                 'current_date': start_time.strftime("%A, %B %d"),
                 'ai_summary': self.get_ai_surf_summary(parsed_surf_data, True),
-                'times': parsed_surf_data['time'].tolist(),
+                'times': [t.strftime("%H:00") for t in parsed_surf_data['time'].tolist()],
                 'water_temperatures': parsed_surf_data['waterTemperature'].tolist()
             }
         except Exception as e:
