@@ -18,67 +18,142 @@
     <canvas id="hourlyTemperatureChart"></canvas>
   </div>
 
-  <!-- Forecast Row -->
-  {% if plugin_settings.displayForecast and plugin_settings.displayForecast == "true" %}
-  <div class="forecast">
-    {% for day in forecast[1:(plugin_settings.forecastDays | int) + 1] %}
-      <div class="forecast-day">
-        <div class="forecast-day-name">{{ day.day }}</div>
-        <img class="forecast-icon" src="{{day.icon}}" alt="{{ day.day }} Weather Icon">
-        <div class="forecast-temps">
-          <span class="high">{{ day.high }}{% if units != "standard" %}°{% endif %}</span> /
-          <span class="low">{{ day.low }}{% if units != "standard" %}°{% endif %}</span>
-        </div>
-        {% if plugin_settings.moonPhase and plugin_settings.moonPhase == "true" %}
-        <div class="separator"></div>
-        <div class="moon-phase-container">
-        <img class="moon-phase-icon" src="{{day.moon_phase_icon}}" alt="Moon phase icon">
-        <span style="flex: 1;">{{day.moon_phase_pct}} %</span>
-        </div>
+<div class="weather-dashboard">
+        {% if plugin_settings.displayRefreshTime == "true" %}
+        <div class="last-refresh">Last refresh: {{ last_refresh_time }}</div>
         {% endif %}
-      </div>
-    {% endfor %}
-  </div>
-  {% endif %}
+        <!-- Current Date -->
+        <div class="header">
+            <div class="title">{{ title }}</div> <!-- Location -->
+            <div class="current-date">{{ current_date }}</div> <!-- Day, Month DayNum -->
+
+            <div class="ai-summary">{{ ai_summary }}</div>
+
+        </div>
+
+        <div class="forecast">
+            <div class="forecast-day">
+                <div class="stats-title">Avg. Water Temp</div>
+                <div>{{ avg_water_temp }}°C</div>
+                <div class="mini-chart-container">
+                    <canvas id="tempsChart"></canvas>
+                </div>
+            </div>
+            <div class="forecast-day">
+                <div class="stats-title">Swell Height (H/L)</div>
+                <div>{{ swell_height_highlow_str }} m</div> <!-- Send as formatted string "H.H / L.L" -->
+                <div class="mini-chart-container">
+                    <canvas id="swellHeightsChart"></canvas>
+                </div>
+            </div>
+            <div class="forecast-day">
+                <div class="stats-title">Wave Period (H/L)</div>
+                <div>{{ wave_period_highlow_str }} s</div> <!-- Send as formatted string "H.H / L.L" -->
+                <div class="mini-chart-container">
+                    <canvas id="wavePeriodChart"></canvas>
+                </div>
+            </div>
+            <!-- TODO Remove wind speed from this group and make it another row where we show hourly wind speed and direction-->
+            <div class="forecast-day">
+                <div class="stats-title">Wind Speed (H/L)</div>
+                <div>{{ wind_speed_highlow_str }} km/h</div> <!-- Send as formatted string "H.H / L.L" -->
+                <div class="mini-chart-container">
+                    <canvas id="windSpeedChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <br>
+
+        <div class="header">
+            <div class="current-date">Today's Tide:</div>
+        </div>
+
+        <!-- Tide Graph -->
+        <div class="chart-container">
+            <canvas id="tideChart"></canvas>
+        </div>
+    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const canvas = document.getElementById('hourlyTemperatureChart');
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
+    <script>
+document.addEventListener("DOMContentLoaded", function () {
+  // ---- Data ----
+  const tideLabels = {{ tide_times | tojson }};
+  const tideHeights = {{ tide_heights | tojson }};
 
-    // Extract hourly temperature and labels from template variables
-    const labels = {{ times | tojson }};
-    const temperatures = {{ water_temperatures | tojson }};
-    //const precipitation = [{% for hour in hourly_forecast %}{{ hour.precipitiation * 100}}{% if not loop.last %}, {% endif %}{% endfor %}]; // Convert to percentage
+  const timeLabels = {{ times | tojson }};
+  const waterTemps = {{ water_temperatures | tojson }};
+  const swellHeights = {{ swell_heights | tojson }};
+  const wavePeriods = {{ wave_periods | tojson }};
+  const windSpeeds  = {{ wind_speeds | tojson }};
 
-    // Find min and max temperatures
-    const minTemp = Math.min(...temperatures);
-    var maxTemp = Math.max(...temperatures);
+  // ---- Chart configs ----
+  const chartsConfig = [
+    {
+      id: "tideChart",
+      label: "Tide Heights",
+      labels: tideLabels,
+      data: tideHeights,
+      gradient: true,
+      showX: true
+    },
+    {
+      id: "tempsChart",
+      label: "Water Temps",
+      labels: timeLabels,
+      data: waterTemps
+    },
+    {
+      id: "swellHeightsChart",
+      label: "Swell Heights",
+      labels: timeLabels,
+      data: swellHeights
+    },
+    {
+      id: "wavePeriodChart",
+      label: "Wave Periods",
+      labels: timeLabels,
+      data: wavePeriods
+    },
+    {
+      id: "windSpeedChart",
+      label: "Wind Speeds",
+      labels: timeLabels,
+      data: windSpeeds
+    }
+  ];
 
-    const chart = new Chart(ctx, {
+  // ---- Helper to build chart ----
+  function createLineChart(canvasId, labels, data, label, useGradient=false, showX=false) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return; // skip if canvas missing
+    const ctx = canvas.getContext("2d");
+
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+
+    const padding = (max - min) * 0.05; // 5% padding
+    const chartMin = min - padding;
+    const chartMax = max + padding;
+
+    return new Chart(ctx, {
       type: 'line',
       data: {
-        labels: labels,
+        labels,
         datasets: [{
-          type: 'line',
-          label: 'Hourly Temperature',
-          data: temperatures,
-          borderColor: 'rgba(8, 62, 105, 0.9)', // Line color
+          label,
+          data,
+          borderColor: 'rgba(8, 62, 105, 0.9)',
           borderWidth: 2,
-          pointRadius: 0, // Hide points
-          fill: true, // Enable filling the area under the line
-          tension: 0.5
-        }
-      ]
+          pointRadius: 0,
+          tension: 0.5,
+          fill: useGradient ? { target: { value: min } } : false
+        }]
       },
       options: {
-        animation: {
-          duration: 0, // general animation time
-        },
+        animation: { duration: 0 },
         responsive: true,
         maintainAspectRatio: false,
         scales: {
@@ -86,84 +161,54 @@
             ticks: {
               autoSkip: true,
               padding: 0,
-              maxRotation: 0, // Prevent label rotation
-              minRotation: 0, // Prevent label rotation
+              maxRotation: 0,
+              minRotation: 0,
               color: "{{ plugin_settings.textColor }}",
-              font: {
-                family: 'Jost'
-              }
+              font: { family: 'Jost' }
             },
-            grid: {
-              tickLength: 0,
-              display: false // Hide x-axis grid
-            },
-            offset: true,
-            gridLines: {
-                drawBorder: false,
-            }
+            grid: { display: false },
+            display: showX
           },
           y: {
             ticks: {
               padding: 0,
               color: "{{ plugin_settings.textColor }}",
-              font: {
-                family: 'Jost'
-              },
+              font: { family: 'Jost' },
               autoSkip: false,
               callback: function(value, index, values) {
-                if (index === values.length-1) return maxTemp + "°";
-                else if (index === 0) return minTemp + "°";
-                else return '';
+                if (index === values.length - 1) return max.toFixed(1);
+                if (index === 0) return min.toFixed(1);
+                return '';
               }
             },
             grid: { display: false },
-            min: minTemp,
-            max: maxTemp,
-          },
-          y1: {
-            position: 'right',
-            grid: { display: false },
-            ticks: {
-              padding: 0,
-              color: "{{ plugin_settings.textColor }}",
-              font: {
-                family: 'Jost'
-              },
-              autoSkip: false,
-              callback: function(value, index, values) {
-                if (index === values.length - 1) return "100%";
-                else if (index === 0) return "0%";
-                else return '';
-              }
-            },
-            min: 0,
-            max: 100,
+            min: chartMin,
+            max: chartMax,
+            display: false
           }
         },
-        plugins: { legend: { display: false}}, // Hide legend
-        elements: {
-          line: {
-            borderJoinStyle: 'round' // Smoother line connection
-          }
+        plugins: { legend: { display: false } },
+        elements: { line: { borderJoinStyle: 'round' } }
+      },
+      plugins: useGradient ? [{
+        id: 'custom-gradient',
+        beforeDatasetsDraw(chart) {
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return;
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, 'rgba(14, 90, 150, 0.95)');
+          gradient.addColorStop(1, 'rgba(14, 90, 150, 0.01)');
+          chart.data.datasets[0].fill.above = gradient;
         }
-      }
+      }] : []
     });
+  }
 
-    chart.update();
-
-    // Now, after the chart is created, we can access the scales
-    const gradientStart = chart.scales['y'].getPixelForValue(maxTemp); // Max temperature
-    const gradientEnd = chart.scales['y'].getPixelForValue(minTemp);   // Min temperature
-
-    // Create gradient based on y-axis values
-    const tempGradient = ctx.createLinearGradient(0, gradientStart, 0, gradientEnd+10);
-    tempGradient.addColorStop(0, 'rgba(14, 90, 150, 0.95)'); // Top of the gradient (max temperature)
-    tempGradient.addColorStop(1, 'rgba(14, 90, 150, 0.01)'); // Bottom of the gradient (min temperature)
-
-    // Update the chart to apply the gradient
-    chart.data.datasets[0].backgroundColor = tempGradient;
-
-    chart.update();
+  // ---- Build all charts ----
+  chartsConfig.forEach(cfg => {
+    createLineChart(cfg.id, cfg.labels, cfg.data, cfg.label, cfg.gradient, cfg.showX);
   });
+
+});
 </script>
 {% endblock %}

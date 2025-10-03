@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 SIM_API = True
 SURF_DATA_URL = "https://api.stormglass.io/v2/weather/point"
 # TODO: Eventually these should be settings passed in from the UI
-HARDCODED_SURF_PARAMS = ['swellDirection', 'swellHeight', 'swellPeriod', 'waterTemperature', 'waveDirection', 'waveHeight', 'wavePeriod']
+HARDCODED_SURF_PARAMS = ['swellDirection', 'swellHeight', 'swellPeriod', 'waterTemperature', 'waveDirection', 'waveHeight', 'wavePeriod', 'windSpeed', 'windDirection']
 
 class Surfer(BasePlugin):
     def generate_settings_template(self):
@@ -48,8 +48,10 @@ class Surfer(BasePlugin):
             storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
             if not storm_glass_api_key:
                 raise RuntimeError('Storm Glass API Key not configured')
-            surf_data = self.get_surf_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
-            parsed_surf_data = self.parse_surf_data(surf_data)
+            surf_weather_data = self.get_surf_weather_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
+            tide_weather_data = self.get_surf_tide_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
+            parsed_surf_data = self.parse_surf_data(surf_weather_data)
+            parsed_tide_data = self.parse_surf_data(tide_weather_data)
 
             # TODO need to take the surf data and add it to a template params dict, each measurement can be its own entry
             template_params = {
@@ -57,7 +59,16 @@ class Surfer(BasePlugin):
                 'current_date': start_time.strftime("%A, %B %d"),
                 'ai_summary': self.get_ai_surf_summary(parsed_surf_data, True),
                 'times': [t.strftime("%H:00") for t in parsed_surf_data['time'].tolist()],
-                'water_temperatures': parsed_surf_data['waterTemperature'].tolist()
+                'tide_times': [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()],
+                'tide_heights': parsed_tide_data['height'].tolist(),
+                'water_temperatures': parsed_surf_data['waterTemperature'].tolist(),
+                'swell_heights': parsed_surf_data['swellHeight'].tolist(),
+                'wave_periods': parsed_surf_data['wavePeriod'].tolist(),
+                'wind_speeds': parsed_surf_data['windSpeed'].tolist(),
+                'avg_water_temp': f"{parsed_surf_data['waterTemperature'].mean():.1f}",
+                'swell_height_highlow_str': f"{parsed_surf_data['swellHeight'].max():0.1f} / {parsed_surf_data['swellHeight'].min():0.1f}",
+                'wave_period_highlow_str': f"{parsed_surf_data['wavePeriod'].max():0.1f} / {parsed_surf_data['wavePeriod'].min():0.1f}",
+                'wind_speed_highlow_str': f"{parsed_surf_data['windSpeed'].max():0.1f} / {parsed_surf_data['windSpeed'].min():0.1f}"
             }
         except Exception as e:
             logger.error(f'Storm Glass request failed: {str(e)}')
@@ -86,10 +97,10 @@ class Surfer(BasePlugin):
         return image
 
     # Returns the raw json response of {hours: { <array of 25 data points for each hour (00 - 23 and 00 for next day) }, meta: { misc API info }}
-    def get_surf_data(self, lat, long, start_time, end_time, api_key):
+    def get_surf_weather_data(self, lat, long, start_time, end_time, api_key):
         response = None
         if SIM_API:
-            logging.info('Simming Storm Glass API response')
+            logging.info('Simming Storm Glass Weather API response')
             test_json_file_path = self.get_plugin_dir('WeatherRequestResponseRaw.json')
             with open(test_json_file_path, "r") as f:
                 response = json.load(f)
@@ -110,8 +121,36 @@ class Surfer(BasePlugin):
             )
 
             if not 200 <= response.status_code < 300:
-                logging.error(f"Failed to retrieve surf data: {response.content}")
-                raise RuntimeError("Failed to retrieve surf data.")
+                logging.error(f"Failed to retrieve weather data: {response.content}")
+                raise RuntimeError("Failed to retrieve weather data.")
+            else:
+                return response.json()
+
+    def get_surf_tide_data(self, lat, long, start_time, end_time, api_key):
+        response = None
+        if SIM_API:
+            logging.info('Simming Storm Glass Tide API response')
+            test_json_file_path = self.get_plugin_dir('TideRequestResponseRaw.json')
+            with open(test_json_file_path, "r") as f:
+                response = json.load(f)
+            return response
+        else:
+            response = requests.get(
+                f'https://api.stormglass.io/v2/tide/extremes/point',
+                params={
+                    'lat': lat,
+                    'lng': long,
+                    'start': start_time,
+                    'end': end_time,
+                },
+                headers={
+                    'Authorization': api_key
+                }
+            )
+
+            if not 200 <= response.status_code < 300:
+                logging.error(f"Failed to retrieve tide data: {response.content}")
+                raise RuntimeError("Failed to retrieve tide data.")
             else:
                 return response.json()
 
@@ -122,7 +161,11 @@ class Surfer(BasePlugin):
     # Note the order of the measurements after the time column is not guaranteed, but it shouldn't be an issue
     def parse_surf_data(self, surf_data):
         # JSON is returned with 'hours' object containing the data and 'meta' object we do not need
-        hours = surf_data["hours"]
+        try:
+            hours = surf_data["hours"]
+        except KeyError:
+            # Tide data is under a data object instead of an hours object like the weather data
+            hours = surf_data["data"]
 
         # Need to determine which measurements were provided in order to average the same ones from different sources
         # Excludes the "time" value for each object
@@ -156,11 +199,11 @@ class Surfer(BasePlugin):
 
         return df
 
-    def get_ai_surf_summary(self, surf_data, do_surfer_bro):
+    def get_ai_surf_summary(self, weather_data, tide_data, do_surfer_bro):
         # TODO make API call to AI service with the prompt below and appended surf data
         surfer_bro_prompt = 'Your response should be made as a stereotypical California surfer dude and should use American surfer slang.'
-        prompt = 'Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} The second sentence should concisely give the best time(s) to go surfing for the day, if any, if there are no good times, the second sentence should be omitted. Sentences should be short and not contain any new lines or breaks between them. {data}'
-        prompt = prompt.format(bro_prompt = surfer_bro_prompt if do_surfer_bro else '', data=surf_data)
+        prompt = 'Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} The second sentence should concisely give the best time(s) to go surfing for the day, if any, if there are no good times, the second sentence should be omitted. Sentences should be short and not contain any new lines or breaks between them. weather data={weather_data} tide data={tide_data}'
+        prompt = prompt.format(bro_prompt = surfer_bro_prompt if do_surfer_bro else '', weather_data=weather_data, tide_data=tide_data)
 
         # TODO AI call here, returning placeholder until then
 

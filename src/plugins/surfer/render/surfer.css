@@ -39,9 +39,13 @@
   position: relative;
 }
 
+.title-date-header {
+/*	TODO: Add spacing between date and summary
+*/}
+
 .title {
   font-size: min(50cqh, 8cqi);
-  text-align: center;
+  text-align: left;
   align-content: end;
   width: 100%;
   font-weight: bold;
@@ -51,10 +55,41 @@
 
 .current-date {
   font-size: min(30cqh, 6cqi);
-  text-align: center;
+  text-align: left;
   align-content: end;
   width: 100%;
   line-height: 105%;
+  padding-block-end: 15px;
+}
+
+.ai-summary {
+  font-size: min(20cqh, 6cqi);
+  text-align: center;
+  align-content: end;
+  width: 100%;
+  font-style: italic;
+  line-height: 105%;
+  padding: 5px 0px 5px 0px;
+}
+
+.stats-container-horizontal {
+  display: flex;
+  flex-wrap: nowrap; /* Allows items to wrap to new lines */
+  justify-content: space-around; /* Distributes space around items */
+  width: 100%;
+  gap: 10px; /* Creates spacing between items */
+}
+
+.stats-item {
+  flex: 1 1 200px; /* shorthand for flex-grow, flex-shrink, flex-basis */
+  padding: 5px;
+/*  background-color: lightblue;
+*/  text-align: center;
+}
+
+.stats-title {
+  font-weight: bold;
+  font-size: 20px;
 }
 
 .today-container {
@@ -180,9 +215,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 1dvh 1vw;
-  border: 1px solid;
-  border-radius: 1.2vw;
   min-width: 0;
   max-height: 100%;
   gap: 0.5dvh
@@ -241,6 +273,12 @@
 .chart-container {
   width: 100%;
   height: 16dvh;
+}
+
+.mini-chart-container {
+  width: 80%;
+  height: 4dvh;
+  padding: 2px 0px 2px 0px;
 }
 
 .separator {
