@@ -50,25 +50,25 @@ class Surfer(BasePlugin):
                 raise RuntimeError('Storm Glass API Key not configured')
             surf_weather_data = self.get_surf_weather_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
             tide_weather_data = self.get_surf_tide_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
-            parsed_surf_data = self.parse_surf_data(surf_weather_data)
+            parsed_weather_data = self.parse_surf_data(surf_weather_data)
             parsed_tide_data = self.parse_surf_data(tide_weather_data)
 
             # TODO need to take the surf data and add it to a template params dict, each measurement can be its own entry
             template_params = {
                 'title': 'The Big MB',
                 'current_date': start_time.strftime("%A, %B %d"),
-                'ai_summary': self.get_ai_surf_summary(parsed_surf_data, True),
-                'times': [t.strftime("%H:00") for t in parsed_surf_data['time'].tolist()],
+                'ai_summary': self.get_ai_surf_summary(parsed_weather_data, parsed_tide_data, True),
+                'times': [t.strftime("%H:00") for t in parsed_weather_data['time'].tolist()],
                 'tide_times': [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()],
                 'tide_heights': parsed_tide_data['height'].tolist(),
-                'water_temperatures': parsed_surf_data['waterTemperature'].tolist(),
-                'swell_heights': parsed_surf_data['swellHeight'].tolist(),
-                'wave_periods': parsed_surf_data['wavePeriod'].tolist(),
-                'wind_speeds': parsed_surf_data['windSpeed'].tolist(),
-                'avg_water_temp': f"{parsed_surf_data['waterTemperature'].mean():.1f}",
-                'swell_height_highlow_str': f"{parsed_surf_data['swellHeight'].max():0.1f} / {parsed_surf_data['swellHeight'].min():0.1f}",
-                'wave_period_highlow_str': f"{parsed_surf_data['wavePeriod'].max():0.1f} / {parsed_surf_data['wavePeriod'].min():0.1f}",
-                'wind_speed_highlow_str': f"{parsed_surf_data['windSpeed'].max():0.1f} / {parsed_surf_data['windSpeed'].min():0.1f}"
+                'water_temperatures': parsed_weather_data['waterTemperature'].tolist(),
+                'swell_heights': parsed_weather_data['swellHeight'].tolist(),
+                'wave_periods': parsed_weather_data['wavePeriod'].tolist(),
+                'wind_speeds': parsed_weather_data['windSpeed'].tolist(),
+                'avg_water_temp': f"{parsed_weather_data['waterTemperature'].mean():.1f}",
+                'swell_height_highlow_str': f"{parsed_weather_data['swellHeight'].max():0.1f} / {parsed_weather_data['swellHeight'].min():0.1f}",
+                'wave_period_highlow_str': f"{parsed_weather_data['wavePeriod'].max():0.1f} / {parsed_weather_data['wavePeriod'].min():0.1f}",
+                'wind_speed_highlow_str': f"{parsed_weather_data['windSpeed'].max():0.1f} / {parsed_weather_data['windSpeed'].min():0.1f}"
             }
         except Exception as e:
             logger.error(f'Storm Glass request failed: {str(e)}')
