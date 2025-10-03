@@ -48,10 +48,10 @@ class Surfer(BasePlugin):
             storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
             if not storm_glass_api_key:
                 raise RuntimeError('Storm Glass API Key not configured')
-            surf_weather_data = self.get_surf_weather_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
-            tide_weather_data = self.get_surf_tide_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
-            parsed_weather_data = self.parse_surf_data(surf_weather_data)
-            parsed_tide_data = self.parse_surf_data(tide_weather_data)
+            raw_weather_data = self.get_surf_weather_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
+            raw_tide_data = self.get_surf_tide_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
+            parsed_weather_data = self.parse_surf_data(raw_weather_data)
+            parsed_tide_data = self.parse_surf_data(raw_tide_data)
 
             # TODO need to take the surf data and add it to a template params dict, each measurement can be its own entry
             template_params = {
