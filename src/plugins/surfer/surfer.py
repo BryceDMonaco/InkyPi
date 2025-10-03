@@ -207,4 +207,4 @@ class Surfer(BasePlugin):
 
         # TODO AI call here, returning placeholder until then
 
-        return f'Morning’s blown out mush, dude, not worth the paddle. Best window’s 7–9pm when it cleans up. ({datetime.now()})'
+        return 'Morning’s blown out mush, dude, not worth the paddle. Best window’s 7–9pm when it cleans up.'
