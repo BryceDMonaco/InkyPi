@@ -3,212 +3,195 @@
 {% block content %}
 
 <div class="weather-dashboard">
-  {% if plugin_settings.displayRefreshTime == "true" %}
-  <div class="last-refresh">Last refresh: {{ last_refresh_time }}</div>
-  {% endif %}
-  <!-- Current Date -->
-  <div class="header">
-    <div class="title">{{ title }}</div>
-    <div class="current-date">{{ current_date }}</div>
-    <div class="current-date">{{ ai_summary }}</div>
-  </div>
+    {% if plugin_settings.displayRefreshTime == "true" %}
+    <div class="last-refresh">Last refresh: {{ last_refresh_time }}</div>
+    {% endif %}
+    <!-- Current Date -->
+    <div class="header">
+        <div class="title">{{ title }}</div> <!-- Location -->
+        <div class="current-date">{{ current_date }}</div> <!-- Day, Month DayNum -->
 
-  <!-- Hourly Temperature Graph -->
-  <div class="chart-container">
-    <canvas id="hourlyTemperatureChart"></canvas>
-  </div>
+        <div class="ai-summary">{{ ai_summary }}</div>
 
-<div class="weather-dashboard">
-        {% if plugin_settings.displayRefreshTime == "true" %}
-        <div class="last-refresh">Last refresh: {{ last_refresh_time }}</div>
-        {% endif %}
-        <!-- Current Date -->
-        <div class="header">
-            <div class="title">{{ title }}</div> <!-- Location -->
-            <div class="current-date">{{ current_date }}</div> <!-- Day, Month DayNum -->
+    </div>
 
-            <div class="ai-summary">{{ ai_summary }}</div>
-
-        </div>
-
-        <div class="forecast">
-            <div class="forecast-day">
-                <div class="stats-title">Avg. Water Temp</div>
-                <div>{{ avg_water_temp }}°C</div>
-                <div class="mini-chart-container">
-                    <canvas id="tempsChart"></canvas>
-                </div>
-            </div>
-            <div class="forecast-day">
-                <div class="stats-title">Swell Height (H/L)</div>
-                <div>{{ swell_height_highlow_str }} m</div> <!-- Send as formatted string "H.H / L.L" -->
-                <div class="mini-chart-container">
-                    <canvas id="swellHeightsChart"></canvas>
-                </div>
-            </div>
-            <div class="forecast-day">
-                <div class="stats-title">Wave Period (H/L)</div>
-                <div>{{ wave_period_highlow_str }} s</div> <!-- Send as formatted string "H.H / L.L" -->
-                <div class="mini-chart-container">
-                    <canvas id="wavePeriodChart"></canvas>
-                </div>
-            </div>
-            <!-- TODO Remove wind speed from this group and make it another row where we show hourly wind speed and direction-->
-            <div class="forecast-day">
-                <div class="stats-title">Wind Speed (H/L)</div>
-                <div>{{ wind_speed_highlow_str }} km/h</div> <!-- Send as formatted string "H.H / L.L" -->
-                <div class="mini-chart-container">
-                    <canvas id="windSpeedChart"></canvas>
-                </div>
+    <div class="forecast">
+        <div class="forecast-day">
+            <div class="stats-title">Avg. Water Temp</div>
+            <div>{{ avg_water_temp }}°C</div>
+            <div class="mini-chart-container">
+                <canvas id="tempsChart"></canvas>
             </div>
         </div>
-        <br>
-
-        <div class="header">
-            <div class="current-date">Today's Tide:</div>
+        <div class="forecast-day">
+            <div class="stats-title">Swell Height (H/L)</div>
+            <div>{{ swell_height_highlow_str }} m</div> <!-- Send as formatted string "H.H / L.L" -->
+            <div class="mini-chart-container">
+                <canvas id="swellHeightsChart"></canvas>
+            </div>
         </div>
-
-        <!-- Tide Graph -->
-        <div class="chart-container">
-            <canvas id="tideChart"></canvas>
+        <div class="forecast-day">
+            <div class="stats-title">Wave Period (H/L)</div>
+            <div>{{ wave_period_highlow_str }} s</div> <!-- Send as formatted string "H.H / L.L" -->
+            <div class="mini-chart-container">
+                <canvas id="wavePeriodChart"></canvas>
+            </div>
         </div>
+        <!-- TODO Remove wind speed from this group and make it another row where we show hourly wind speed and direction-->
+        <div class="forecast-day">
+            <div class="stats-title">Wind Speed (H/L)</div>
+            <div>{{ wind_speed_highlow_str }} km/h</div> <!-- Send as formatted string "H.H / L.L" -->
+            <div class="mini-chart-container">
+                <canvas id="windSpeedChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <br>
+
+    <div class="header">
+        <div class="current-date">Today's Tide:</div>
+    </div>
+
+    <!-- Tide Graph -->
+    <div class="chart-container">
+        <canvas id="tideChart"></canvas>
     </div>
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script>
-document.addEventListener("DOMContentLoaded", function () {
-  // ---- Data ----
-  const tideLabels = {{ tide_times | tojson }};
-  const tideHeights = {{ tide_heights | tojson }};
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // ---- Data ----
+      const tideLabels = {{ tide_times | tojson }};
+      const tideHeights = {{ tide_heights | tojson }};
 
-  const timeLabels = {{ times | tojson }};
-  const waterTemps = {{ water_temperatures | tojson }};
-  const swellHeights = {{ swell_heights | tojson }};
-  const wavePeriods = {{ wave_periods | tojson }};
-  const windSpeeds  = {{ wind_speeds | tojson }};
+      const timeLabels = {{ times | tojson }};
+      const waterTemps = {{ water_temperatures | tojson }};
+      const swellHeights = {{ swell_heights | tojson }};
+      const wavePeriods = {{ wave_periods | tojson }};
+      const windSpeeds  = {{ wind_speeds | tojson }};
 
-  // ---- Chart configs ----
-  const chartsConfig = [
-    {
-      id: "tideChart",
-      label: "Tide Heights",
-      labels: tideLabels,
-      data: tideHeights,
-      gradient: true,
-      showX: true
-    },
-    {
-      id: "tempsChart",
-      label: "Water Temps",
-      labels: timeLabels,
-      data: waterTemps
-    },
-    {
-      id: "swellHeightsChart",
-      label: "Swell Heights",
-      labels: timeLabels,
-      data: swellHeights
-    },
-    {
-      id: "wavePeriodChart",
-      label: "Wave Periods",
-      labels: timeLabels,
-      data: wavePeriods
-    },
-    {
-      id: "windSpeedChart",
-      label: "Wind Speeds",
-      labels: timeLabels,
-      data: windSpeeds
-    }
-  ];
+      // ---- Chart configs ----
+      const chartsConfig = [
+        {
+          id: "tideChart",
+          label: "Tide Heights",
+          labels: tideLabels,
+          data: tideHeights,
+          gradient: true,
+          showX: true
+        },
+        {
+          id: "tempsChart",
+          label: "Water Temps",
+          labels: timeLabels,
+          data: waterTemps
+        },
+        {
+          id: "swellHeightsChart",
+          label: "Swell Heights",
+          labels: timeLabels,
+          data: swellHeights
+        },
+        {
+          id: "wavePeriodChart",
+          label: "Wave Periods",
+          labels: timeLabels,
+          data: wavePeriods
+        },
+        {
+          id: "windSpeedChart",
+          label: "Wind Speeds",
+          labels: timeLabels,
+          data: windSpeeds
+        }
+      ];
 
-  // ---- Helper to build chart ----
-  function createLineChart(canvasId, labels, data, label, useGradient=false, showX=false) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return; // skip if canvas missing
-    const ctx = canvas.getContext("2d");
+      // ---- Helper to build chart ----
+      function createLineChart(canvasId, labels, data, label, useGradient=false, showX=false) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return; // skip if canvas missing
+        const ctx = canvas.getContext("2d");
 
-    const min = Math.min(...data);
-    const max = Math.max(...data);
+        const min = Math.min(...data);
+        const max = Math.max(...data);
 
-    const padding = (max - min) * 0.05; // 5% padding
-    const chartMin = min - padding;
-    const chartMax = max + padding;
+        const padding = (max - min) * 0.05; // 5% padding
+        const chartMin = min - padding;
+        const chartMax = max + padding;
 
-    return new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label,
-          data,
-          borderColor: 'rgba(8, 62, 105, 0.9)',
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.5,
-          fill: useGradient ? { target: { value: min } } : false
-        }]
-      },
-      options: {
-        animation: { duration: 0 },
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            ticks: {
-              autoSkip: true,
-              padding: 0,
-              maxRotation: 0,
-              minRotation: 0,
-              color: "{{ plugin_settings.textColor }}",
-              font: { family: 'Jost' }
-            },
-            grid: { display: false },
-            display: showX
+        return new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data,
+              borderColor: 'rgba(8, 62, 105, 0.9)',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.5,
+              fill: useGradient ? { target: { value: min } } : false
+            }]
           },
-          y: {
-            ticks: {
-              padding: 0,
-              color: "{{ plugin_settings.textColor }}",
-              font: { family: 'Jost' },
-              autoSkip: false,
-              callback: function(value, index, values) {
-                if (index === values.length - 1) return max.toFixed(1);
-                if (index === 0) return min.toFixed(1);
-                return '';
+          options: {
+            animation: { duration: 0 },
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                ticks: {
+                  autoSkip: true,
+                  padding: 0,
+                  maxRotation: 0,
+                  minRotation: 0,
+                  color: "{{ plugin_settings.textColor }}",
+                  font: { family: 'Jost' }
+                },
+                grid: { display: false },
+                display: showX
+              },
+              y: {
+                ticks: {
+                  padding: 0,
+                  color: "{{ plugin_settings.textColor }}",
+                  font: { family: 'Jost' },
+                  autoSkip: false,
+                  callback: function(value, index, values) {
+                    if (index === values.length - 1) return max.toFixed(1);
+                    if (index === 0) return min.toFixed(1);
+                    return '';
+                  }
+                },
+                grid: { display: false },
+                min: chartMin,
+                max: chartMax,
+                display: false
               }
             },
-            grid: { display: false },
-            min: chartMin,
-            max: chartMax,
-            display: false
-          }
-        },
-        plugins: { legend: { display: false } },
-        elements: { line: { borderJoinStyle: 'round' } }
-      },
-      plugins: useGradient ? [{
-        id: 'custom-gradient',
-        beforeDatasetsDraw(chart) {
-          const { ctx, chartArea } = chart;
-          if (!chartArea) return;
-          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          gradient.addColorStop(0, 'rgba(14, 90, 150, 0.95)');
-          gradient.addColorStop(1, 'rgba(14, 90, 150, 0.01)');
-          chart.data.datasets[0].fill.above = gradient;
-        }
-      }] : []
+            plugins: { legend: { display: false } },
+            elements: { line: { borderJoinStyle: 'round' } }
+          },
+          plugins: useGradient ? [{
+            id: 'custom-gradient',
+            beforeDatasetsDraw(chart) {
+              const { ctx, chartArea } = chart;
+              if (!chartArea) return;
+              const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              gradient.addColorStop(0, 'rgba(14, 90, 150, 0.95)');
+              gradient.addColorStop(1, 'rgba(14, 90, 150, 0.01)');
+              chart.data.datasets[0].fill.above = gradient;
+            }
+          }] : []
+        });
+      }
+
+      // ---- Build all charts ----
+      chartsConfig.forEach(cfg => {
+        createLineChart(cfg.id, cfg.labels, cfg.data, cfg.label, cfg.gradient, cfg.showX);
+      });
+
     });
-  }
-
-  // ---- Build all charts ----
-  chartsConfig.forEach(cfg => {
-    createLineChart(cfg.id, cfg.labels, cfg.data, cfg.label, cfg.gradient, cfg.showX);
-  });
-
-});
 </script>
 {% endblock %}
