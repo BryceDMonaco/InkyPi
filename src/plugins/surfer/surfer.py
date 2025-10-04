@@ -241,7 +241,7 @@ class Surfer(BasePlugin):
             conditions.append(
                 {
                     'time': times[actual_index],
-                    'speed': wind_speeds[actual_index],
+                    'speed': f"{wind_speeds[actual_index]:.1f}",
                     'direction': wind_direction_compass[actual_index]
                 }
             )
