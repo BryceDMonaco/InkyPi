@@ -37,16 +37,21 @@
                 <canvas id="wavePeriodChart"></canvas>
             </div>
         </div>
-        <!-- TODO Remove wind speed from this group and make it another row where we show hourly wind speed and direction-->
-        <div class="forecast-day">
-            <div class="stats-title">Wind Speed (H/L)</div>
-            <div>{{ wind_speed_highlow_str }} km/h</div> <!-- Send as formatted string "H.H / L.L" -->
-            <div class="mini-chart-container">
-                <canvas id="windSpeedChart"></canvas>
-            </div>
-        </div>
     </div>
-    <br>
+
+    <div class="forecast">
+        <div class = "forecast-day">
+                <div class="stats-title">Wind</div>
+                <div class="stats-title">Conditions</div>
+            </div>
+        {% for segment in wind_conditions %}
+            <div class = "forecast-day">
+                <div class="stats-title">{{ segment.time }}</div>
+                <div>{{ segment.speed }} km/h</div>
+                <div>{{ segment.direction }}</div>
+            </div>
+        {% endfor %}
+        </div>
 
     <div class="header">
         <div class="current-date">Today's Tide:</div>
@@ -70,7 +75,6 @@
       const waterTemps = {{ water_temperatures | tojson }};
       const swellHeights = {{ swell_heights | tojson }};
       const wavePeriods = {{ wave_periods | tojson }};
-      const windSpeeds  = {{ wind_speeds | tojson }};
 
       // ---- Chart configs ----
       const chartsConfig = [
@@ -99,12 +103,6 @@
           label: "Wave Periods",
           labels: timeLabels,
           data: wavePeriods
-        },
-        {
-          id: "windSpeedChart",
-          label: "Wind Speeds",
-          labels: timeLabels,
-          data: windSpeeds
         }
       ];
 

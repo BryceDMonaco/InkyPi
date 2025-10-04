@@ -9,7 +9,10 @@ import requests
 logger = logging.getLogger(__name__)
 
 SIM_API = True
-SURF_DATA_URL = "https://api.stormglass.io/v2/weather/point"
+WEATHER_DATA_URL = "https://api.stormglass.io/v2/weather/point"
+TIDE_DATA_URL = "https://api.stormglass.io/v2/tide/extremes/point"
+GEOCODING_URL = "http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={long}&limit=1&appid={api_key}"
+
 # TODO: Eventually these should be settings passed in from the UI
 HARDCODED_SURF_PARAMS = ['swellDirection', 'swellHeight', 'swellPeriod', 'waterTemperature', 'waveDirection', 'waveHeight', 'wavePeriod', 'windSpeed', 'windDirection']
 
@@ -32,7 +35,6 @@ class Surfer(BasePlugin):
             raise RuntimeError("Latitude and Longitude are required.")
 
         weather_provider = settings.get('weatherProvider', 'OpenWeatherMap')
-        title = settings.get('customTitle', '')
 
         timezone = device_config.get_config("timezone", default="America/New_York")
         time_format = device_config.get_config("time_format", default="12h")
@@ -45,6 +47,11 @@ class Surfer(BasePlugin):
 
         # Gather and parse surf data
         try:
+            open_weather_map_api_key = device_config.load_env_key("OPEN_WEATHER_MAP_SECRET")
+            title = settings.get('customTitle', '')
+            if settings.get('titleSelection', 'location') == 'location':
+                title = self.get_location(open_weather_map_api_key, lat, long)
+
             storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
             if not storm_glass_api_key:
                 raise RuntimeError('Storm Glass API Key not configured')
@@ -53,22 +60,27 @@ class Surfer(BasePlugin):
             parsed_weather_data = self.parse_surf_data(raw_weather_data)
             parsed_tide_data = self.parse_surf_data(raw_tide_data)
 
+            # Format times once since they are used in multiple places
+            formatted_times = [t.strftime("%H:00") for t in parsed_weather_data['time'].tolist()]
+
+            # Convert wind direction (0-360 deg) to compass directions
+            parsed_weather_data['windDirectionCompass'] = parsed_weather_data['windDirection'].apply(self.degrees_to_compass)
+
             # TODO need to take the surf data and add it to a template params dict, each measurement can be its own entry
             template_params = {
-                'title': 'The Big MB',
+                'title': title,
                 'current_date': start_time.strftime("%A, %B %d"),
                 'ai_summary': self.get_ai_surf_summary(parsed_weather_data, parsed_tide_data, True),
-                'times': [t.strftime("%H:00") for t in parsed_weather_data['time'].tolist()],
+                'times': formatted_times,
                 'tide_times': [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()],
                 'tide_heights': parsed_tide_data['height'].tolist(),
                 'water_temperatures': parsed_weather_data['waterTemperature'].tolist(),
                 'swell_heights': parsed_weather_data['swellHeight'].tolist(),
                 'wave_periods': parsed_weather_data['wavePeriod'].tolist(),
-                'wind_speeds': parsed_weather_data['windSpeed'].tolist(),
+                'wind_conditions': self.build_wind_conditions(formatted_times, parsed_weather_data['windSpeed'].tolist(), parsed_weather_data['windDirectionCompass'].tolist()),
                 'avg_water_temp': f"{parsed_weather_data['waterTemperature'].mean():.1f}",
                 'swell_height_highlow_str': f"{parsed_weather_data['swellHeight'].max():0.1f} / {parsed_weather_data['swellHeight'].min():0.1f}",
                 'wave_period_highlow_str': f"{parsed_weather_data['wavePeriod'].max():0.1f} / {parsed_weather_data['wavePeriod'].min():0.1f}",
-                'wind_speed_highlow_str': f"{parsed_weather_data['windSpeed'].max():0.1f} / {parsed_weather_data['windSpeed'].min():0.1f}"
             }
         except Exception as e:
             logger.error(f'Storm Glass request failed: {str(e)}')
@@ -107,7 +119,7 @@ class Surfer(BasePlugin):
             return response
         else:
             response = requests.get(
-                SURF_DATA_URL,
+                WEATHER_DATA_URL,
                 params={
                     'start': start_time,
                     'end': end_time,
@@ -136,7 +148,7 @@ class Surfer(BasePlugin):
             return response
         else:
             response = requests.get(
-                f'https://api.stormglass.io/v2/tide/extremes/point',
+                TIDE_DATA_URL,
                 params={
                     'lat': lat,
                     'lng': long,
@@ -208,3 +220,43 @@ class Surfer(BasePlugin):
         # TODO AI call here, returning placeholder until then
 
         return 'Morning’s blown out mush, dude, not worth the paddle. Best window’s 7–9pm when it cleans up.'
+
+    def degrees_to_compass(self, degrees):
+        directions = [
+            "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"
+        ]
+
+        index = round((degrees % 360) / 22.5)
+
+        return directions[index % 16]
+
+    def build_wind_conditions(self, times, wind_speeds, wind_direction_compass):
+        conditions = []
+
+        for index in range(7):
+            # We need to grab indices 0, 4, 8, 12, 16, 20, 24
+            actual_index = index * 4
+
+            conditions.append(
+                {
+                    'time': times[actual_index],
+                    'speed': wind_speeds[actual_index],
+                    'direction': wind_direction_compass[actual_index]
+                }
+            )
+
+        return conditions
+
+    def get_location(self, api_key, lat, long):
+        url = GEOCODING_URL.format(lat=lat, long=long, api_key=api_key)
+        response = requests.get(url)
+
+        if not 200 <= response.status_code < 300:
+            logging.error(f"Failed to get location: {response.content}")
+            raise RuntimeError("Failed to retrieve location.")
+
+        location_data = response.json()[0]
+        location_str = f"{location_data.get('name')}, {location_data.get('state', location_data.get('country'))}"
+
+        return location_str
