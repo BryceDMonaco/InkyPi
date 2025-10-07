@@ -8,7 +8,6 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-SIM_API = True
 WEATHER_DATA_URL = "https://api.stormglass.io/v2/weather/point"
 TIDE_DATA_URL = "https://api.stormglass.io/v2/tide/extremes/point"
 GEOCODING_URL = "http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={long}&limit=1&appid={api_key}"
@@ -47,6 +46,7 @@ class Surfer(BasePlugin):
 
         # Gather and parse surf data
         try:
+            sim_api_responses = device_config.load_env_key("SIM_SURF_API", default=False)
             open_weather_map_api_key = device_config.load_env_key("OPEN_WEATHER_MAP_SECRET")
             title = settings.get('customTitle', '')
             if settings.get('titleSelection', 'location') == 'location':
@@ -55,8 +55,8 @@ class Surfer(BasePlugin):
             storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
             if not storm_glass_api_key:
                 raise RuntimeError('Storm Glass API Key not configured')
-            raw_weather_data = self.get_surf_weather_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
-            raw_tide_data = self.get_surf_tide_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key)
+            raw_weather_data = self.get_surf_weather_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key, sim_api_responses)
+            raw_tide_data = self.get_surf_tide_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key, sim_api_responses)
             parsed_weather_data = self.parse_surf_data(raw_weather_data)
             parsed_tide_data = self.parse_surf_data(raw_tide_data)
 
@@ -109,9 +109,9 @@ class Surfer(BasePlugin):
         return image
 
     # Returns the raw json response of {hours: { <array of 25 data points for each hour (00 - 23 and 00 for next day) }, meta: { misc API info }}
-    def get_surf_weather_data(self, lat, long, start_time, end_time, api_key):
+    def get_surf_weather_data(self, lat, long, start_time, end_time, api_key, sim_response=False):
         response = None
-        if SIM_API:
+        if sim_response:
             logging.info('Simming Storm Glass Weather API response')
             test_json_file_path = self.get_plugin_dir('WeatherRequestResponseRaw.json')
             with open(test_json_file_path, "r") as f:
@@ -138,9 +138,9 @@ class Surfer(BasePlugin):
             else:
                 return response.json()
 
-    def get_surf_tide_data(self, lat, long, start_time, end_time, api_key):
+    def get_surf_tide_data(self, lat, long, start_time, end_time, api_key, sim_response=False):
         response = None
-        if SIM_API:
+        if sim_response:
             logging.info('Simming Storm Glass Tide API response')
             test_json_file_path = self.get_plugin_dir('TideRequestResponseRaw.json')
             with open(test_json_file_path, "r") as f:
