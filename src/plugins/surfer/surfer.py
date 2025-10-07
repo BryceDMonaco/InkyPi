@@ -46,7 +46,7 @@ class Surfer(BasePlugin):
 
         # Gather and parse surf data
         try:
-            sim_api_responses = device_config.load_env_key("SIM_SURF_API", default=False)
+            sim_api_responses = device_config.load_env_key("SIM_SURF_API") or False
             open_weather_map_api_key = device_config.load_env_key("OPEN_WEATHER_MAP_SECRET")
             title = settings.get('customTitle', '')
             if settings.get('titleSelection', 'location') == 'location':
