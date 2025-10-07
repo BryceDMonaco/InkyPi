@@ -219,7 +219,7 @@ class Surfer(BasePlugin):
 
         # TODO AI call here, returning placeholder until then
 
-        return 'Morning’s blown out mush, dude, not worth the paddle. Best window’s 7–9pm when it cleans up.'
+        return "Surf's up, dude!"
 
     def degrees_to_compass(self, degrees):
         directions = [
