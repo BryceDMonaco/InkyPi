@@ -21,8 +21,8 @@ class Surfer(BasePlugin):
         # Template just looks for the param 'api_key' to see if it needs the banner on the settings page
         template_params['api_key'] = {
             "required": True,
-            "service": "OpenWeatherMap and StormGlass",
-            "expected_key": "OPEN_WEATHER_MAP_SECRET, STORM_GLASS_SECRET"
+            "service": "OpenWeatherMap, StormGlass, OpenAI (optional)",
+            "expected_key": "OPEN_WEATHER_MAP_SECRET, STORM_GLASS_SECRET, OPEN_AI_SECRET (optional)"
         }
         template_params['style_settings'] = True
         return template_params
