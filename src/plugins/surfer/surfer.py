@@ -34,7 +34,9 @@ class Surfer(BasePlugin):
         if not lat or not long:
             raise RuntimeError("Latitude and Longitude are required.")
 
-        weather_provider = settings.get('weatherProvider', 'OpenWeatherMap')
+        units = settings.get('units')
+        if not units or units not in ['metric', 'imperial', 'standard']:
+            raise RuntimeError("Units are required.")
 
         timezone = device_config.get_config("timezone", default="America/New_York")
         time_format = device_config.get_config("time_format", default="12h")
@@ -67,6 +69,9 @@ class Surfer(BasePlugin):
             # Convert wind direction (0-360 deg) to compass directions
             parsed_weather_data['windDirectionCompass'] = parsed_weather_data['windDirection'].apply(self.degrees_to_compass)
 
+            # Apply unit selection
+            parsed_weather_data = self.apply_units(parsed_weather_data, units)
+
             # TODO need to take the surf data and add it to a template params dict, each measurement can be its own entry
             template_params = {
                 'title': title,
@@ -82,6 +87,7 @@ class Surfer(BasePlugin):
                 'avg_water_temp': f"{parsed_weather_data['waterTemperature'].mean():.1f}",
                 'swell_height_highlow_str': f"{parsed_weather_data['swellHeight'].max():0.1f} / {parsed_weather_data['swellHeight'].min():0.1f}",
                 'wave_period_highlow_str': f"{parsed_weather_data['wavePeriod'].max():0.1f} / {parsed_weather_data['wavePeriod'].min():0.1f}",
+                'units': units,
             }
         except Exception as e:
             logger.error(f'Storm Glass request failed: {str(e)}')
@@ -261,3 +267,30 @@ class Surfer(BasePlugin):
         location_str = f"{location_data.get('name')}, {location_data.get('state', location_data.get('country'))}"
 
         return location_str
+
+    def apply_units(self, weather_data, units):
+        # Water Temp Data comes in as C
+        weather_data['waterTemperature'] = weather_data['waterTemperature'].apply(
+            lambda temp_c: temp_c if units == 'metric' else
+            ((temp_c * 9 / 5) + 32) if units == 'imperial' else
+            (temp_c + 273.15))
+
+        # Swell Height Data comes in as meters
+        weather_data['swellHeight'] = weather_data['swellHeight'].apply(
+            lambda swell_m: swell_m if units == 'metric' else
+            (swell_m * 3.28084) if units == 'imperial' else
+            swell_m)
+
+        # Wave Height Data comes in as meters
+        weather_data['waveHeight'] = weather_data['waveHeight'].apply(
+            lambda wave_height_m: wave_height_m if units == 'metric' else
+            (wave_height_m * 3.28084) if units == 'imperial' else
+            wave_height_m)
+
+        # Wind Speed Data comes in as km/h
+        weather_data['windSpeed'] = weather_data['windSpeed'].apply(
+            lambda wind_speed_kmh: wind_speed_kmh if units == 'metric' else
+            (wind_speed_kmh * 0.621371) if units == 'imperial' else
+            wind_speed_kmh)
+
+        return weather_data

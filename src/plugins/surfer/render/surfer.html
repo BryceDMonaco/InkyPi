@@ -18,14 +18,14 @@
     <div class="forecast">
         <div class="forecast-day">
             <div class="stats-title">Avg. Water Temp</div>
-            <div>{{ avg_water_temp }}°C</div>
+            <div>{{ avg_water_temp }}{{ "°C" if units == "metric" else " K" if units == "standard" else "°F" }}</div>
             <div class="mini-chart-container">
                 <canvas id="tempsChart"></canvas>
             </div>
         </div>
         <div class="forecast-day">
             <div class="stats-title">Swell Height (H/L)</div>
-            <div>{{ swell_height_highlow_str }} m</div> <!-- Send as formatted string "H.H / L.L" -->
+            <div>{{ swell_height_highlow_str }} {{ "m" if units == "metric" or units == "standard" else "ft" }}</div> <!-- Send as formatted string "H.H / L.L" -->
             <div class="mini-chart-container">
                 <canvas id="swellHeightsChart"></canvas>
             </div>
@@ -47,7 +47,7 @@
         {% for segment in wind_conditions %}
             <div class = "forecast-day">
                 <div class="stats-title">{{ segment.time }}</div>
-                <div>{{ segment.speed }} km/h</div>
+                <div>{{ segment.speed }} {{ "km/h" if units == "metric" or units == "standard" else "MPH" }}</div>
                 <div>{{ segment.direction }}</div>
             </div>
         {% endfor %}
