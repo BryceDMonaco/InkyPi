@@ -66,8 +66,10 @@ class Surfer(BasePlugin):
             # Format times once since they are used in multiple places
             if time_format == "24h":
                 formatted_times = [t.strftime("%H:00") for t in parsed_weather_data['time'].tolist()]
+                tide_times = [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()]
             else:
                 formatted_times = [t.strftime("%I:00 %p") for t in parsed_weather_data['time'].tolist()]
+                tide_times = [t.strftime("%I:%M %p") for t in parsed_tide_data['time'].tolist()]
 
             # Convert wind direction (0-360 deg) to compass directions
             parsed_weather_data['windDirectionCompass'] = parsed_weather_data['windDirection'].apply(self.degrees_to_compass)
@@ -81,7 +83,7 @@ class Surfer(BasePlugin):
                 'current_date': start_time.strftime("%A, %B %d"),
                 'ai_summary': self.get_ai_surf_summary(parsed_weather_data, parsed_tide_data, True),
                 'times': formatted_times,
-                'tide_times': [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()],
+                'tide_times': tide_times,
                 'tide_heights': parsed_tide_data['height'].tolist(),
                 'water_temperatures': parsed_weather_data['waterTemperature'].tolist(),
                 'wave_heights': parsed_weather_data['waveHeight'].tolist(),
