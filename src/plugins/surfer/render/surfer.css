@@ -89,7 +89,8 @@
 
 .stats-title {
   font-weight: bold;
-  font-size: 20px;
+  font-size:  18px;
+  white-space: nowrap;
 }
 
 .today-container {

@@ -68,7 +68,7 @@ class Surfer(BasePlugin):
                 formatted_times = [t.strftime("%H:00") for t in parsed_weather_data['time'].tolist()]
                 tide_times = [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()]
             else:
-                formatted_times = [t.strftime("%-I:00 %p") for t in parsed_weather_data['time'].tolist()]
+                formatted_times = [t.strftime("%-I %p") for t in parsed_weather_data['time'].tolist()]
                 tide_times = [t.strftime("%-I:%M %p") for t in parsed_tide_data['time'].tolist()]
 
             # Convert wind direction (0-360 deg) to compass directions
