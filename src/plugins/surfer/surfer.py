@@ -81,11 +81,13 @@ class Surfer(BasePlugin):
                 'tide_times': [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()],
                 'tide_heights': parsed_tide_data['height'].tolist(),
                 'water_temperatures': parsed_weather_data['waterTemperature'].tolist(),
+                'wave_heights': parsed_weather_data['waveHeight'].tolist(),
                 'swell_heights': parsed_weather_data['swellHeight'].tolist(),
                 'wave_periods': parsed_weather_data['wavePeriod'].tolist(),
                 'wind_conditions': self.build_wind_conditions(formatted_times, parsed_weather_data['windSpeed'].tolist(), parsed_weather_data['windDirectionCompass'].tolist()),
                 'avg_water_temp': f"{parsed_weather_data['waterTemperature'].mean():.1f}",
                 'swell_height_highlow_str': f"{parsed_weather_data['swellHeight'].max():0.1f} / {parsed_weather_data['swellHeight'].min():0.1f}",
+                'wave_height_highlow_str': f"{parsed_weather_data['waveHeight'].max():0.1f} / {parsed_weather_data['waveHeight'].min():0.1f}",
                 'wave_period_highlow_str': f"{parsed_weather_data['wavePeriod'].max():0.1f} / {parsed_weather_data['wavePeriod'].min():0.1f}",
                 'units': units,
             }

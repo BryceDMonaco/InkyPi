@@ -24,6 +24,13 @@
             </div>
         </div>
         <div class="forecast-day">
+            <div class="stats-title">Wave Height (H/L)</div>
+            <div>{{ wave_height_highlow_str }} {{ "m" if units == "metric" or units == "standard" else "ft" }}</div> <!-- Send as formatted string "H.H / L.L" -->
+            <div class="mini-chart-container">
+                <canvas id="waveHeightsChart"></canvas>
+            </div>
+        </div>
+        <div class="forecast-day">
             <div class="stats-title">Swell Height (H/L)</div>
             <div>{{ swell_height_highlow_str }} {{ "m" if units == "metric" or units == "standard" else "ft" }}</div> <!-- Send as formatted string "H.H / L.L" -->
             <div class="mini-chart-container">
@@ -74,6 +81,7 @@
       const timeLabels = {{ times | tojson }};
       const waterTemps = {{ water_temperatures | tojson }};
       const swellHeights = {{ swell_heights | tojson }};
+      const waveHeights = {{ wave_heights | tojson }};
       const wavePeriods = {{ wave_periods | tojson }};
 
       // ---- Chart configs ----
@@ -97,6 +105,12 @@
           label: "Swell Heights",
           labels: timeLabels,
           data: swellHeights
+        },
+        {
+          id: "waveHeightsChart",
+          label: "Wave Heights",
+          labels: timeLabels,
+          data: waveHeights
         },
         {
           id: "wavePeriodChart",
