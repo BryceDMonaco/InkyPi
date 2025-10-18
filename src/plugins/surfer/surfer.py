@@ -100,9 +100,10 @@ class Surfer(BasePlugin):
             logger.error(f'Storm Glass request failed: {str(e)}')
             raise RuntimeError('Storm Glass request failure, please check logs.')
 
-        # Have language model summarize
+        # TODO Have language model summarize
 
         dimensions = device_config.get_resolution()
+        logger.info(f"Screen Dimensions: {dimensions}")
         if device_config.get_config("orientation") == "vertical":
             dimensions = dimensions[::-1]
 
