@@ -18,10 +18,11 @@ HARDCODED_SURF_PARAMS = ['swellDirection', 'swellHeight', 'swellPeriod', 'waterT
 class Surfer(BasePlugin):
     def generate_settings_template(self):
         template_params = super().generate_settings_template()
-        template_params['storm_glass_api_key'] = {
+        # Template just looks for the param 'api_key' to see if it needs the banner on the settings page
+        template_params['api_key'] = {
             "required": True,
-            "service": "StormGlass",
-            "expected_key": "STORM_GLASS_SECRET"
+            "service": "OpenWeatherMap and StormGlass",
+            "expected_key": "OPEN_WEATHER_MAP_SECRET, STORM_GLASS_SECRET"
         }
         template_params['style_settings'] = True
         return template_params
