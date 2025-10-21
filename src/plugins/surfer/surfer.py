@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 import json
 import logging
+from openai import OpenAI
 import pandas as pd
 from plugins.base_plugin.base_plugin import BasePlugin
 import pytz
@@ -47,17 +48,25 @@ class Surfer(BasePlugin):
         formatted_start_time = start_time.strftime("%Y-%m-%dT00:00:00")
         formatted_end_time = end_time.strftime("%Y-%m-%dT00:00:00")
 
+        do_surfer_bro = settings.get('summaryStyle', '') == 'surfer'
+
         # Gather and parse surf data
         try:
             sim_api_responses = device_config.load_env_key("SIM_SURF_API") or False
+
+            # Get API Keys
             open_weather_map_api_key = device_config.load_env_key("OPEN_WEATHER_MAP_SECRET")
+            if not open_weather_map_api_key:
+                raise RuntimeError('Open Weather Map API Key not configured')
+            storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
+            if not storm_glass_api_key:
+                raise RuntimeError('Storm Glass API Key not configured')
+            openai_api_key = device_config.load_env_key("OPEN_AI_SECRET")
+
             title = settings.get('customTitle', '')
             if settings.get('titleSelection', 'location') == 'location':
                 title = self.get_location(open_weather_map_api_key, lat, long)
 
-            storm_glass_api_key = device_config.load_env_key("STORM_GLASS_SECRET")
-            if not storm_glass_api_key:
-                raise RuntimeError('Storm Glass API Key not configured')
             raw_weather_data = self.get_surf_weather_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key, sim_api_responses)
             raw_tide_data = self.get_surf_tide_data(lat, long, formatted_start_time, formatted_end_time, storm_glass_api_key, sim_api_responses)
             parsed_weather_data = self.parse_surf_data(raw_weather_data)
@@ -81,7 +90,6 @@ class Surfer(BasePlugin):
             template_params = {
                 'title': title,
                 'current_date': start_time.strftime("%A, %B %d"),
-                'ai_summary': self.get_ai_surf_summary(parsed_weather_data, parsed_tide_data, True),
                 'times': formatted_times,
                 'tide_times': tide_times,
                 'tide_heights': parsed_tide_data['height'].tolist(),
@@ -100,10 +108,10 @@ class Surfer(BasePlugin):
             logger.error(f'Storm Glass request failed: {str(e)}')
             raise RuntimeError('Storm Glass request failure, please check logs.')
 
-        # TODO Have language model summarize
+        if settings.get('displaySummary', "false") == "true":
+            template_params['ai_summary'] = self.get_ai_surf_summary(parsed_weather_data, parsed_tide_data, do_surfer_bro, openai_api_key)
 
         dimensions = device_config.get_resolution()
-        logger.info(f"Screen Dimensions: {dimensions}")
         if device_config.get_config("orientation") == "vertical":
             dimensions = dimensions[::-1]
 
@@ -226,15 +234,41 @@ class Surfer(BasePlugin):
 
         return df
 
-    def get_ai_surf_summary(self, weather_data, tide_data, do_surfer_bro):
-        # TODO make API call to AI service with the prompt below and appended surf data
+    def get_ai_surf_summary(self, weather_data, tide_data, do_surfer_bro, api_key):
+        logger.info("get_ai_surf_summary called")
+        if not api_key:
+            raise RuntimeError('Show Summary selected, but no OpenAI API key was found')
+
         surfer_bro_prompt = 'Your response should be made as a stereotypical California surfer dude and should use American surfer slang.'
-        prompt = 'Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} The second sentence should concisely give the best time(s) to go surfing for the day, if any, if there are no good times, the second sentence should be omitted. Sentences should be short and not contain any new lines or breaks between them. weather data={weather_data} tide data={tide_data}'
-        prompt = prompt.format(bro_prompt = surfer_bro_prompt if do_surfer_bro else '', weather_data=weather_data, tide_data=tide_data)
+        system_prompt = 'You are an expert surf weather analyst. The user will provide you JSON weather data and JSON tide data. Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} The second sentence should concisely give the best time(s) to go surfing for the day, if any, if there are no good times, the second sentence should be omitted. Sentences should be short and not contain any new lines or breaks between them.'
+        system_prompt = system_prompt.format(bro_prompt = surfer_bro_prompt if do_surfer_bro else '')
+        model = 'gpt-4o'
+        try:
+            ai_client = OpenAI(api_key=api_key)
 
-        # TODO AI call here, returning placeholder until then
+            response = ai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": f"weather_data={weather_data} tide_data={tide_data}"
+                    }
+                ],
+                temperature=1
+            )
 
-        return "Surf's up, dude!"
+            summary = response.choices[0].message.content.strip()
+            logger.info(f"Generated the following summary: {summary}")
+
+        except Exception as e:
+            logger.error(f"Failed to make Open AI request: {str(e)}")
+            raise RuntimeError("Open AI request failure, please check logs.")
+
+        return summary
 
     def degrees_to_compass(self, degrees):
         directions = [

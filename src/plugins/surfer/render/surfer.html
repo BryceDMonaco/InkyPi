@@ -11,7 +11,9 @@
         <div class="title">{{ title }}</div> <!-- Location -->
         <div class="current-date">{{ current_date }}</div> <!-- Day, Month DayNum -->
 
+        {% if plugin_settings.showSummary == "true" %}
         <div class="ai-summary">{{ ai_summary }}</div>
+        {% endif %}
 
     </div>
 
