@@ -235,7 +235,6 @@ class Surfer(BasePlugin):
         return df
 
     def get_ai_surf_summary(self, weather_data, tide_data, do_surfer_bro, api_key):
-        logger.info("get_ai_surf_summary called")
         if not api_key:
             raise RuntimeError('Show Summary selected, but no OpenAI API key was found')
 
