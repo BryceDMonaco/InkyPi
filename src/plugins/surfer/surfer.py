@@ -239,7 +239,7 @@ class Surfer(BasePlugin):
             raise RuntimeError('Show Summary selected, but no OpenAI API key was found')
 
         surfer_bro_prompt = 'Your response should be made as a stereotypical California surfer dude and should use American surfer slang.'
-        system_prompt = 'You are an expert surf weather analyst. The user will provide you JSON weather data and JSON tide data. Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} The second sentence should concisely give the best time(s) to go surfing for the day, if any, if there are no good times, the second sentence should be omitted. Sentences should be short and not contain any new lines or breaks between them. Do not directly mention any measurements or the date, only summarize. Your entire response should be brief.'
+        system_prompt = 'You are an expert surf weather analyst. The user will provide you JSON weather data and JSON tide data. Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} The second sentence should concisely give the absolute best time(s) to go surfing for the day given the tide and weather conditions, if any, if there are no good times, the second sentence should be omitted. Sentences should be short, not wordy, and not contain any new lines or breaks between them. Do not directly mention any measurements or the date, only summarize. IMPORTANT: Your entire response should be brief.'
         system_prompt = system_prompt.format(bro_prompt = surfer_bro_prompt if do_surfer_bro else '')
         model = 'gpt-4o'
         try:
