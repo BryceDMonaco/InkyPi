@@ -232,9 +232,14 @@ install_app_service() {
 }
 
 install_executable() {
-  echo "Adding executable to ${BINPATH}/$APPNAME"
+  echo "Adding executables to ${BINPATH}/"
   cp $SCRIPT_DIR/inkypi $BINPATH/
   sudo chmod +x $BINPATH/$APPNAME
+
+  # Install inkypi-refresh CLI tool
+  cp $SCRIPT_DIR/inkypi-refresh $BINPATH/
+  sudo chmod +x $BINPATH/inkypi-refresh
+  echo_success "\tInstalled inkypi-refresh to $BINPATH/"
 }
 
 install_config() {

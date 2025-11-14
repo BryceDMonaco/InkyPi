@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+# InkyPi Refresh CLI - Bash wrapper script
+# Triggers manual display refreshes for InkyPi playlists and plugins
+
+PROGRAM_PATH=/usr/local/inkypi
+VENV_PATH="$PROGRAM_PATH/venv_inkypi"
+REFRESH_CLI_PATH="$(dirname "$(readlink -f "$0")")/refresh_cli.py"
+
+# If running from installed location, use the installed script
+if [ -f "$PROGRAM_PATH/install/refresh_cli.py" ]; then
+    REFRESH_CLI_PATH="$PROGRAM_PATH/install/refresh_cli.py"
+fi
+
+# Check if virtual environment exists
+if [ ! -d "$VENV_PATH" ]; then
+    echo "Error: Virtual environment not found at $VENV_PATH"
+    echo "Please ensure InkyPi is properly installed."
+    exit 1
+fi
+
+# Activate virtual environment
+source "$VENV_PATH/bin/activate"
+
+# Set environment variables
+export PROJECT_DIR="$PROGRAM_PATH"
+export SRC_DIR="$PROGRAM_PATH/src"
+
+# Execute the Python refresh CLI script with all arguments
+python -u "$REFRESH_CLI_PATH" "$@"
+EXIT_CODE=$?
+
+# Deactivate virtual environment
+deactivate
+
+exit $EXIT_CODE
