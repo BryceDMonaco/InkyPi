@@ -46,6 +46,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Try to add systemd journal handler for service logs
+try:
+    from systemd import journal
+    journal_handler = journal.JournalHandler(SYSLOG_IDENTIFIER='inkypi-refresh')
+    journal_handler.setLevel(logging.INFO)
+    journal_formatter = logging.Formatter('inkypi-refresh: %(message)s')
+    journal_handler.setFormatter(journal_formatter)
+    logging.getLogger().addHandler(journal_handler)
+except ImportError:
+    # systemd journal not available, that's okay
+    pass
+
 
 def parse_arguments():
     """Parse command-line arguments."""
@@ -87,12 +99,43 @@ Examples:
     return parser.parse_args()
 
 
+def check_service_status():
+    """Check if the inkypi service is running and return status."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ['systemctl', 'is-active', 'inkypi.service'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        return result.stdout.strip() == 'active'
+    except Exception:
+        # If we can't check (e.g., not systemd), assume it might be running
+        return None
+
+
 def main():
     """Main entry point for the refresh CLI."""
     args = parse_arguments()
 
+    # Log to journal that CLI was invoked
+    logger.info(f"Manual refresh triggered via CLI: playlist='{args.playlist}'" +
+                (f", plugin='{args.plugin}'" if args.plugin else "") +
+                (", force=True" if args.force else ""))
+
     logger.info("InkyPi Refresh CLI")
     logger.info("=" * 50)
+
+    # Check if inkypi service is running
+    service_active = check_service_status()
+    if service_active is False:
+        logger.warning("⚠️  WARNING: inkypi.service is not running")
+        logger.warning("    The display will update, but scheduled refreshes won't occur")
+        logger.warning("    Start the service with: sudo systemctl start inkypi.service")
+        logger.info("-" * 50)
+    elif service_active is True:
+        logger.info("✓ inkypi.service is running")
 
     try:
         # Load device configuration
@@ -216,14 +259,19 @@ def main():
         logger.info(f"Time: {current_dt.strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info("=" * 50)
 
+        # Log completion to journal
+        logger.info(f"CLI refresh completed: {refresh_info['plugin_id']}/{refresh_info.get('plugin_instance', 'N/A')}")
+
         return 0
 
     except KeyboardInterrupt:
         logger.info("\nRefresh cancelled by user")
+        logger.warning("CLI refresh cancelled by user")
         return 130
     except Exception as e:
         logger.error(f"Error: {str(e)}")
         logger.exception("Full traceback:")
+        logger.error(f"CLI refresh failed: {str(e)}")
         return 1
 
 
