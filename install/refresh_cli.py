@@ -87,6 +87,10 @@ def main():
         logger.info("Loading device configuration...")
         device_config = Config()
 
+        # Load plugins into registry
+        from plugins.plugin_registry import load_plugins
+        load_plugins(device_config.get_plugins())
+
         # Get playlist manager
         playlist_manager = device_config.get_playlist_manager()
 
