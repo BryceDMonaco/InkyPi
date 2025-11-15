@@ -19,9 +19,21 @@ import os
 import argparse
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+# Load environment variables from .env file
+# Look for .env in the src directory (where it should be deployed)
+env_path = os.path.join(os.path.dirname(__file__), '..', 'src', '.env')
+if os.path.exists(env_path):
+    load_dotenv(env_path, override=True)
+else:
+    # Fallback: try project root
+    env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+    if os.path.exists(env_path):
+        load_dotenv(env_path, override=True)
 
 from config import Config
 from display.display_manager import DisplayManager
