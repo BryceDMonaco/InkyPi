@@ -5,11 +5,13 @@
 
 PROGRAM_PATH=/usr/local/inkypi
 VENV_PATH="$PROGRAM_PATH/venv_inkypi"
-REFRESH_CLI_PATH="$(dirname "$(readlink -f "$0")")/refresh_cli.py"
+REFRESH_CLI_PATH="$PROGRAM_PATH/install/refresh_cli.py"
 
-# If running from installed location, use the installed script
-if [ -f "$PROGRAM_PATH/install/refresh_cli.py" ]; then
-    REFRESH_CLI_PATH="$PROGRAM_PATH/install/refresh_cli.py"
+# Check if the Python script exists
+if [ ! -f "$REFRESH_CLI_PATH" ]; then
+    echo "Error: refresh_cli.py not found at $REFRESH_CLI_PATH"
+    echo "Please ensure InkyPi is properly installed."
+    exit 1
 fi
 
 # Check if virtual environment exists
