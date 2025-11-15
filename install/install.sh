@@ -309,6 +309,9 @@ copy_project() {
 
   ln -sf "$SRC_PATH" "$INSTALL_PATH/src"
   show_loader "\tCreating symlink from $SRC_PATH to $INSTALL_PATH/src"
+
+  ln -sf "$SCRIPT_DIR" "$INSTALL_PATH/install"
+  show_loader "\tCreating symlink from $SCRIPT_DIR to $INSTALL_PATH/install"
 }
 
 # Get Raspberry Pi hostname
