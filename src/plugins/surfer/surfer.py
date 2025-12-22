@@ -246,30 +246,45 @@ class Surfer(BasePlugin):
         system_prompt = 'You are an expert surf weather analyst. The user will provide you JSON weather data and JSON tide data. Given the following surf and weather data, generate a one sentence summary of the conditions for the day.{bro_prompt} {recommendation_prompt} Sentences should be short, not wordy, and not contain any new lines or breaks between them. Do not directly mention any measurements or the date, only summarize. CRITICAL: Your entire response should be brief and less than 400 total characters.'
         system_prompt = system_prompt.format(bro_prompt = surfer_bro_prompt if do_surfer_bro else '', recommendation_prompt = recommendation_prompt if do_recommendation else '')
         model = 'gpt-4o'
-        try:
-            ai_client = OpenAI(api_key=api_key)
 
-            response = ai_client.chat.completions.create(
-                model=model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
-                        "role": "user",
-                        "content": f"weather_data={weather_data} tide_data={tide_data}"
-                    }
-                ],
-                temperature=1
-            )
+        summary = ""
+        max_attempts = 3
 
-            summary = response.choices[0].message.content.strip()
-            logger.info(f"Generated the following summary: {summary}")
+        # Hacky, but ran out of time to get a better solution
+        for attempt in range(max_attempts):
+            try:
+                ai_client = OpenAI(api_key=api_key)
 
-        except Exception as e:
-            logger.error(f"Failed to make Open AI request: {str(e)}")
-            summary = ""
+                response = ai_client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": system_prompt
+                        },
+                        {
+                            "role": "user",
+                            "content": f"weather_data={weather_data} tide_data={tide_data}"
+                        }
+                    ],
+                    temperature=1
+                )
+
+                summary = response.choices[0].message.content.strip()
+                logger.info(f"Generated the following summary (attempt {attempt + 1}): {summary}")
+
+                if len(summary) <= 400:
+                    break
+                else:
+                    logger.warning(f"Summary exceeded 400 characters ({len(summary)} chars) on attempt {attempt + 1}")
+                    if attempt == max_attempts - 1:
+                        logger.error("All attempts to generate a summary under 400 characters failed")
+                        summary = ""
+
+            except Exception as e:
+                logger.error(f"Failed to make Open AI request on attempt {attempt + 1}: {str(e)}")
+                summary = ""
+                break
 
         return summary
 
