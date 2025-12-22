@@ -269,7 +269,7 @@ class Surfer(BasePlugin):
 
         except Exception as e:
             logger.error(f"Failed to make Open AI request: {str(e)}")
-            raise RuntimeError("Open AI request failure, please check logs.")
+            summary = ""
 
         return summary
 
