@@ -92,8 +92,8 @@ class Surfer(BasePlugin):
                 formatted_times = [t.strftime("%H:00") for t in local_weather_times]
                 tide_times = [t.strftime("%H:%M") for t in local_tide_times]
             else:
-                formatted_times = [t.strftime("%-I %p") for t in local_weather_times]
-                tide_times = [t.strftime("%-I:%M %p") for t in local_tide_times]
+                formatted_times = [t.strftime("%-I %p").upper() for t in local_weather_times]
+                tide_times = [t.strftime("%-I:%M %p").upper() for t in local_tide_times]
 
             # Convert wind direction (0-360 deg) to compass directions
             parsed_weather_data['windDirectionCompass'] = parsed_weather_data['windDirection'].apply(self.degrees_to_compass)
@@ -137,7 +137,7 @@ class Surfer(BasePlugin):
         if time_format == "24h":
             last_refresh_time = now.strftime("%Y-%m-%d %H:%M")
         else:
-            last_refresh_time = now.strftime("%Y-%m-%d %I:%M %p")
+            last_refresh_time = now.strftime("%Y-%m-%d %I:%M %p").upper()
         template_params["last_refresh_time"] = last_refresh_time
 
         image = self.render_image(dimensions, "surfer.html", "surfer.css", template_params)
