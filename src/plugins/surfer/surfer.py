@@ -43,10 +43,21 @@ class Surfer(BasePlugin):
         time_format = device_config.get_config("time_format", default="12h")
         tz = pytz.timezone(timezone)
 
-        start_time = datetime.now()
+        # Get current time in local timezone
+        local_tz = datetime.now().astimezone().tzinfo
+        now_local = datetime.now(local_tz)
+
+        # Set to midnight local time
+        start_time = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(days=1)
-        formatted_start_time = start_time.strftime("%Y-%m-%dT00:00:00")
-        formatted_end_time = end_time.strftime("%Y-%m-%dT00:00:00")
+
+        # Convert to UTC for API requests
+        start_time_utc = start_time.astimezone(timezone.utc)
+        end_time_utc = end_time.astimezone(timezone.utc)
+
+        # Format for API
+        formatted_start_time = start_time_utc.strftime("%Y-%m-%dT%H:%M:%S")
+        formatted_end_time = end_time_utc.strftime("%Y-%m-%dT%H:%M:%S")
 
         do_surfer_bro = settings.get('summaryStyle', '') == 'surfer'
 
@@ -73,12 +84,16 @@ class Surfer(BasePlugin):
             parsed_tide_data = self.parse_surf_data(raw_tide_data)
 
             # Format times once since they are used in multiple places
+            # Convert UTC times to local timezone for display
+            local_weather_times = [t.astimezone(tz) for t in parsed_weather_data['time'].tolist()]
+            local_tide_times = [t.astimezone(tz) for t in parsed_tide_data['time'].tolist()]
+
             if time_format == "24h":
-                formatted_times = [t.strftime("%H:00") for t in parsed_weather_data['time'].tolist()]
-                tide_times = [t.strftime("%H:%M") for t in parsed_tide_data['time'].tolist()]
+                formatted_times = [t.strftime("%H:00") for t in local_weather_times]
+                tide_times = [t.strftime("%H:%M") for t in local_tide_times]
             else:
-                formatted_times = [t.strftime("%-I %p") for t in parsed_weather_data['time'].tolist()]
-                tide_times = [t.strftime("%-I:%M %p") for t in parsed_tide_data['time'].tolist()]
+                formatted_times = [t.strftime("%-I %p") for t in local_weather_times]
+                tide_times = [t.strftime("%-I:%M %p") for t in local_tide_times]
 
             # Convert wind direction (0-360 deg) to compass directions
             parsed_weather_data['windDirectionCompass'] = parsed_weather_data['windDirection'].apply(self.degrees_to_compass)
