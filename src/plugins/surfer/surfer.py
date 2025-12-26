@@ -39,9 +39,9 @@ class Surfer(BasePlugin):
         if not units or units not in ['metric', 'imperial', 'standard']:
             raise RuntimeError("Units are required.")
 
-        timezone = device_config.get_config("timezone", default="America/New_York")
+        timezone_str = device_config.get_config("timezone", default="America/New_York")
         time_format = device_config.get_config("time_format", default="12h")
-        tz = pytz.timezone(timezone)
+        tz = pytz.timezone(timezone_str)
 
         # Get current time in local timezone
         local_tz = datetime.now().astimezone().tzinfo
